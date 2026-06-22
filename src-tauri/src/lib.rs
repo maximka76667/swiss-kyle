@@ -1,4 +1,4 @@
-use shared::{CutVideo, Job, Publisher};
+use shared::{CutVideo, Job, JobEnvelope, Publisher};
 use std::sync::Mutex;
 use std::time::Duration;
 use tauri::Manager;
@@ -23,14 +23,15 @@ async fn submit_cut_job(
     output: String,
     start_secs: f64,
     end_secs: f64,
-) -> Result<(), String> {
-    let job = Job::CutVideo(CutVideo {
+) -> Result<String, String> {
+    let job = JobEnvelope::new(Job::CutVideo(CutVideo {
         input,
         output,
         start_secs,
         end_secs,
-    });
-    publisher.publish(&job).await.map_err(|e| e.to_string())
+    }));
+    publisher.publish(&job).await.map_err(|e| e.to_string())?;
+    Ok(job.id)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

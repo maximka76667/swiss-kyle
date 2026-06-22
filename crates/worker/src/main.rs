@@ -1,5 +1,5 @@
 use futures::StreamExt;
-use shared::{CutVideo, Job};
+use shared::{CutVideo, Job, JobEnvelope};
 use std::process::Command;
 use std::time::Duration;
 
@@ -121,8 +121,8 @@ async fn main() -> Result<(), async_nats::Error> {
                 String::from_utf8_lossy(&message.payload)
             );
 
-            let job: Job = match serde_json::from_slice(&message.payload) {
-                Ok(j) => j,
+            let envelope: JobEnvelope = match serde_json::from_slice(&message.payload) {
+                Ok(e) => e,
                 Err(e) => {
                     eprintln!("Worker {} failed to deserialize job: {:?}", worker_id, e);
                     let _ = message.ack().await;
@@ -130,9 +130,9 @@ async fn main() -> Result<(), async_nats::Error> {
                 }
             };
 
-            match job {
+            match envelope.job {
                 Job::CutVideo(j) => {
-                    println!("Worker {} processing job", worker_id);
+                    println!("Worker {} processing job {}", worker_id, envelope.id);
                     match cut_video(j) {
                         Ok(()) => println!("Worker {} done", worker_id),
                         Err(e) => eprintln!("Worker {} failed: {}", worker_id, e),

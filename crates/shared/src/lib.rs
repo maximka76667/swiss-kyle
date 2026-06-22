@@ -1,6 +1,23 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct JobEnvelope {
+    pub id: String,
+    pub job: Job,
+}
+
+impl JobEnvelope {
+    pub fn new(job: Job) -> Self {
+        let id = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+            .to_string();
+        Self { id, job }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Job {
     CutVideo(CutVideo),
 }
@@ -33,9 +50,12 @@ impl Publisher {
         Ok(Self { jetstream })
     }
 
-    pub async fn publish(&self, job: &Job) -> Result<(), async_nats::Error> {
+    pub async fn publish(&self, job: &JobEnvelope) -> Result<(), async_nats::Error> {
         let payload = serde_json::to_vec(job).unwrap();
-        self.jetstream.publish("jobs", payload.into()).await?.await?;
+        self.jetstream
+            .publish("jobs", payload.into())
+            .await?
+            .await?;
         Ok(())
     }
 }

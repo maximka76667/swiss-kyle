@@ -1,4 +1,4 @@
-use shared::{CutVideo, Job, Publisher};
+use shared::{CutVideo, Job, JobEnvelope, Publisher};
 
 #[tokio::main]
 async fn main() -> Result<(), async_nats::Error> {
@@ -21,9 +21,11 @@ async fn main() -> Result<(), async_nats::Error> {
         }
     };
 
+    let envelope = JobEnvelope::new(job);
+
     let publisher = Publisher::connect().await?;
-    publisher.publish(&job).await?;
-    println!("Published: {:?}", job);
+    publisher.publish(&envelope).await?;
+    println!("Published: {:?}", envelope);
 
     Ok(())
 }
