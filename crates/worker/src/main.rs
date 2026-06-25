@@ -1,9 +1,25 @@
 use futures::StreamExt;
-use shared::{CutVideo, Job, JobEnvelope};
-use std::process::Command;
+use shared::{publish_status, CutVideo, Job, JobEnvelope, JobStatus, StatusEvent};
+use std::io::Read;
+use std::process::{Command, Stdio};
 use std::time::Duration;
+use tokio::sync::mpsc::UnboundedSender;
 
-fn cut_video(job: CutVideo) -> Result<(), Box<dyn std::error::Error>> {
+/// Parses ffmpeg's `time=HH:MM:SS.cc` field out of a progress line, returning seconds.
+fn parse_time_secs(line: &str) -> Option<f64> {
+    let rest = &line[line.find("time=")? + "time=".len()..];
+    let time_str = &rest[..rest.find(' ').unwrap_or(rest.len())];
+    let mut parts = time_str.split(':');
+    let hours: f64 = parts.next()?.parse().ok()?;
+    let minutes: f64 = parts.next()?.parse().ok()?;
+    let seconds: f64 = parts.next()?.parse().ok()?;
+    Some(hours * 3600.0 + minutes * 60.0 + seconds)
+}
+
+fn cut_video(
+    job: CutVideo,
+    progress_tx: &UnboundedSender<f64>,
+) -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "Cutting {} → {} ({}-{}s)",
         job.input, job.output, job.start_secs, job.end_secs
@@ -30,19 +46,34 @@ fn cut_video(job: CutVideo) -> Result<(), Box<dyn std::error::Error>> {
     ];
     println!("ffmpeg args: {:?}", args);
 
-    let output = Command::new("ffmpeg").args(&args).output()?;
+    let mut child = Command::new("ffmpeg")
+        .args(&args)
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()?;
 
-    println!(
-        "ffmpeg stdout:\n{}",
-        String::from_utf8_lossy(&output.stdout)
-    );
-    println!(
-        "ffmpeg stderr:\n{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    let duration_secs = (job.end_secs - job.start_secs).max(0.001);
+    // ffmpeg redraws its progress line with '\r' rather than '\n', so split on
+    // either byte instead of reading by line (which would block until EOF).
+    let mut stderr = child.stderr.take().expect("stderr was piped");
+    let mut line = String::new();
+    let mut byte = [0u8; 1];
+    while stderr.read(&mut byte)? > 0 {
+        match byte[0] {
+            b'\r' | b'\n' => {
+                if let Some(secs) = parse_time_secs(&line) {
+                    let percent = ((secs / duration_secs) * 100.0).clamp(0.0, 100.0);
+                    let _ = progress_tx.send(percent);
+                }
+                line.clear();
+            }
+            c => line.push(c as char),
+        }
+    }
 
-    if !output.status.success() {
-        return Err(format!("ffmpeg exited with {}", output.status).into());
+    let status = child.wait()?;
+    if !status.success() {
+        return Err(format!("ffmpeg exited with {}", status).into());
     }
 
     println!(
@@ -62,7 +93,7 @@ async fn main() -> Result<(), async_nats::Error> {
     println!("Worker {} connecting to nats://localhost:4222 ...", worker_id);
     let client = async_nats::connect("nats://localhost:4222").await?;
     println!("Worker {} connected, connection state: {:?}", worker_id, client.connection_state());
-    let jetstream = async_nats::jetstream::new(client);
+    let jetstream = async_nats::jetstream::new(client.clone());
 
     let stream = jetstream
         .get_or_create_stream(async_nats::jetstream::stream::Config {
@@ -133,10 +164,55 @@ async fn main() -> Result<(), async_nats::Error> {
             match envelope.job {
                 Job::CutVideo(j) => {
                     println!("Worker {} processing job {}", worker_id, envelope.id);
-                    match cut_video(j) {
-                        Ok(()) => println!("Worker {} done", worker_id),
-                        Err(e) => eprintln!("Worker {} failed: {}", worker_id, e),
-                    }
+                    let _ = publish_status(
+                        &client,
+                        &StatusEvent {
+                            id: envelope.id.clone(),
+                            status: JobStatus::Received,
+                        },
+                    )
+                    .await;
+
+                    let (progress_tx, mut progress_rx) =
+                        tokio::sync::mpsc::unbounded_channel::<f64>();
+                    let progress_client = client.clone();
+                    let progress_id = envelope.id.clone();
+                    let progress_task = tokio::spawn(async move {
+                        while let Some(percent) = progress_rx.recv().await {
+                            let _ = publish_status(
+                                &progress_client,
+                                &StatusEvent {
+                                    id: progress_id.clone(),
+                                    status: JobStatus::Processing { percent },
+                                },
+                            )
+                            .await;
+                        }
+                    });
+
+                    let status = match cut_video(j, &progress_tx) {
+                        Ok(()) => {
+                            println!("Worker {} done", worker_id);
+                            JobStatus::Done
+                        }
+                        Err(e) => {
+                            eprintln!("Worker {} failed: {}", worker_id, e);
+                            JobStatus::Failed {
+                                reason: e.to_string(),
+                            }
+                        }
+                    };
+                    drop(progress_tx);
+                    let _ = progress_task.await;
+
+                    let _ = publish_status(
+                        &client,
+                        &StatusEvent {
+                            id: envelope.id,
+                            status,
+                        },
+                    )
+                    .await;
                 }
             }
 

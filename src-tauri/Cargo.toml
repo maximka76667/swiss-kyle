@@ -27,3 +27,4 @@ shared = { version = "0.1.0", path = "../crates/shared" }
 tauri-plugin-dialog = "2.7.1"
 tauri-plugin-shell = "2.3.5"
 tokio = { version = "1.52.3", features = ["time"] }
+futures = "0.3.32"

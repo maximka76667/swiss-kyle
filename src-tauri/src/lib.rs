@@ -1,7 +1,8 @@
-use shared::{CutVideo, Job, JobEnvelope, Publisher};
+use futures::StreamExt;
+use shared::{CutVideo, Job, JobEnvelope, Publisher, StatusEvent, STATUS_SUBJECT};
 use std::sync::Mutex;
 use std::time::Duration;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 
@@ -71,7 +72,27 @@ pub fn run() {
                 }
                 panic!("failed to connect to NATS sidecar after 10s");
             });
+            let status_client = publisher.client().clone();
             app.manage(publisher);
+
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let mut subscriber = match status_client.subscribe(STATUS_SUBJECT).await {
+                    Ok(s) => s,
+                    Err(e) => {
+                        log::error!("failed to subscribe to job status: {:?}", e);
+                        return;
+                    }
+                };
+                while let Some(message) = subscriber.next().await {
+                    match serde_json::from_slice::<StatusEvent>(&message.payload) {
+                        Ok(event) => {
+                            let _ = app_handle.emit("job-status", event);
+                        }
+                        Err(e) => log::error!("failed to deserialize status event: {:?}", e),
+                    }
+                }
+            });
 
             let num_workers = std::thread::available_parallelism()
                 .map(|n| n.get())

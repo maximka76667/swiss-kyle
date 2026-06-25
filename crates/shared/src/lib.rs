@@ -30,14 +30,40 @@ pub struct CutVideo {
     pub end_secs: f64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum JobStatus {
+    Received,
+    Processing { percent: f64 },
+    Done,
+    Failed { reason: String },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StatusEvent {
+    pub id: String,
+    pub status: JobStatus,
+}
+
+pub const STATUS_SUBJECT: &str = "jobs.status";
+
+pub async fn publish_status(
+    client: &async_nats::Client,
+    event: &StatusEvent,
+) -> Result<(), async_nats::Error> {
+    let payload = serde_json::to_vec(event)?;
+    client.publish(STATUS_SUBJECT, payload.into()).await?;
+    Ok(())
+}
+
 pub struct Publisher {
+    client: async_nats::Client,
     jetstream: async_nats::jetstream::Context,
 }
 
 impl Publisher {
     pub async fn connect() -> Result<Self, async_nats::Error> {
         let client = async_nats::connect("nats://localhost:4222").await?;
-        let jetstream = async_nats::jetstream::new(client);
+        let jetstream = async_nats::jetstream::new(client.clone());
 
         jetstream
             .get_or_create_stream(async_nats::jetstream::stream::Config {
@@ -47,7 +73,11 @@ impl Publisher {
             })
             .await?;
 
-        Ok(Self { jetstream })
+        Ok(Self { client, jetstream })
+    }
+
+    pub fn client(&self) -> &async_nats::Client {
+        &self.client
     }
 
     pub async fn publish(&self, job: &JobEnvelope) -> Result<(), async_nats::Error> {
