@@ -4,18 +4,18 @@ _Last updated: 2026-06-28_
 
 ## Architecture
 
-- [[wiki/architecture/system-overview]] — Local-only media pipeline: Tauri app → NATS JetStream → workers → ffmpeg, with embedded SurrealDB for job state
+- [[wiki/architecture/system-overview]] — Local-only pipeline: Tauri app → NATS JetStream → workers → ffmpeg/pandoc+typst
 
 ## Components
 
-- [[wiki/components/job-types]] — `JobEnvelope`, `Job`/`CutVideo`, `JobStatus`/`StatusEvent` — all NATS message types
+- [[wiki/components/job-types]] — `JobEnvelope`, `Job`/`CutVideo`/`ConvertToPdf`, `JobStatus`/`StatusEvent` — all NATS message types
 - [[wiki/components/publisher]] — Shared `Publisher` struct: connects to NATS, durably publishes jobs
-- [[wiki/components/worker]] — `main.rs`: pulls jobs, runs ffmpeg, streams progress via mpsc, publishes StatusEvents
-- [[wiki/components/cli-publisher]] — `publisher.rs`: CLI for manually submitting jobs
-- [[wiki/components/http-api]] — `api.rs`: Axum HTTP/websocket service (replaced by Tauri app)
-- [[wiki/components/tauri-app]] — `src-tauri/src/lib.rs`: sidecar orchestration, Tauri commands, NATS status relay
-- [[wiki/components/video-server]] — `src-tauri/src/video_server.rs`: local Axum server serving videos with HTTP range support
-- [[wiki/components/frontend]] — `swiss-kyle-ui/`: React/TS app with VideoPlayer, TimelineSlider, CutVideo, JobHistory
+- [[wiki/components/worker]] — Pulls jobs, runs ffmpeg (cut-video) or pandoc+typst (pdf), streams progress, publishes StatusEvents
+- [[wiki/components/tauri-app]] — Sidecar orchestration, Tauri commands, NATS status relay
+- [[wiki/components/video-server]] — Local Axum server serving videos with HTTP range support
+- [[wiki/components/frontend]] — React/TS app: two tools (Cut Video, PDF Converter), drag-drop, router-based navigation, job history sidebar
+- [[wiki/components/cli-publisher]] — Archived: CLI dev tool for job submission, replaced by Tauri app
+- [[wiki/components/http-api]] — Archived: Axum HTTP API from VPS-backend era, replaced by Tauri app
 
 ## Decisions
 
@@ -30,7 +30,7 @@ _Last updated: 2026-06-28_
 ## Dependencies
 
 - [[wiki/dependencies/async-nats]] — NATS/JetStream client
-- [[wiki/dependencies/axum]] — HTTP framework (used in video-server and formerly in api.rs)
+- [[wiki/dependencies/axum]] — HTTP framework (used in video-server)
 
 ## Questions
 
@@ -38,6 +38,6 @@ _(empty)_
 
 ## Issues
 
-- [[wiki/issues/missing-db-and-progress]] — Progress reporting done; SurrealDB persistence still missing
+- [[wiki/issues/missing-db-and-progress]] — SurrealDB persistence still planned but not implemented; job history resets on restart
 - [[wiki/issues/api-rs-obsolescence]] — Resolved: Tauri app now handles job submission and status forwarding in-process
-- [[wiki/issues/user-friendly-process-errors]] — ffmpeg/pandoc errors shown as raw stderr; should map known patterns to plain-language guidance
+- [[wiki/issues/user-friendly-process-errors]] — ffmpeg/pandoc errors shown as raw stderr tail; should map known patterns to plain-language guidance
