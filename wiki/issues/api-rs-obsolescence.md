@@ -1,30 +1,22 @@
-# api.rs Slated for Replacement by Tauri
+# api.rs Replaced by Tauri App (Resolved)
 
 **Type**: issue
-**Summary**: The standalone HTTP API binary was built for the original VPS-backend design; under the local-only pivot its job-submission and progress-forwarding responsibilities move in-process into the Tauri app, but it's being kept temporarily as a manual test harness.
-**Tags**: #issue #tech-debt #tauri
-**Sources**: [[src/bin/api.rs]], [[docs/DESIGN.md]]
-**Related**: [[wiki/components/http-api]], [[wiki/decisions/adr-001-local-only]]
-**Last Updated**: 2026-06-22
+**Summary**: The standalone HTTP API binary (`api.rs`) has been superseded — the Tauri app now handles job submission and status forwarding in-process. This issue is resolved.
+**Tags**: #issue #tech-debt #tauri #resolved
+**Sources**: [[src-tauri/src/lib.rs]], [[docs/DESIGN.md]]
+**Related**: [[wiki/components/http-api]], [[wiki/components/tauri-app]], [[wiki/decisions/adr-001-local-only]]
+**Last Updated**: 2026-06-28
 
 ---
 
 ## Overview
 
-Before the local-only pivot, `api.rs` was the backend's HTTP entry point: the Tauri frontend would `POST /jobs/cut` and listen on `/ws/progress`. After the pivot, the Tauri app is meant to call `Publisher::publish` (and future DB writes) directly in-process, and forward NATS progress/completion events via Tauri events instead of a websocket — making `api.rs` redundant.
-
-## Details
-
-Kept for now as a `curl`-able way to exercise job submission and the progress-forwarding path while building out the worker/DB pieces, since the Tauri app doesn't exist yet. No code changes have been made to `api.rs` reflecting the pivot (it still expects a remote-style HTTP/websocket client).
+This issue tracked `api.rs` as temporary scaffolding pending a real Tauri app. The Tauri app now exists (`src-tauri/src/lib.rs`) and implements the same responsibilities in-process: `submit_cut_job` publishes to NATS JetStream, and a background task subscribes to `jobs.status` and re-emits events as Tauri events to the frontend — no HTTP or websocket needed. `api.rs` is no longer in the active codebase.
 
 ## Decisions & Rationale
 
-Explicitly scoped as temporary scaffolding, not a permanent component — avoid investing further feature work into it (e.g. it should not be the one to gain SurrealDB writes; that logic belongs in the shared `db` crate/lib, callable from whichever frontend needs it).
-
-## Known Issues / Tech Debt
-
-Should be deleted once the Tauri app exists and exercises the same in-process call path directly.
+Resolved as designed: the `shared` crate's `Publisher` is called directly from Tauri command handlers, and NATS status events flow via `app_handle.emit()` rather than a websocket (→ [[wiki/components/tauri-app]]).
 
 ## Related
 
-[[wiki/components/http-api]], [[wiki/decisions/adr-001-local-only]]
+[[wiki/components/http-api]], [[wiki/components/tauri-app]], [[wiki/decisions/adr-001-local-only]]

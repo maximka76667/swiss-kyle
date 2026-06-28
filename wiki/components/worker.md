@@ -1,64 +1,89 @@
 # Worker
 
 **Type**: component
-**Summary**: `subscriber.rs` binary — pulls one job at a time from the durable NATS consumer and runs ffmpeg as a subprocess; logs status transitions but doesn't yet persist them or report progress.
-**Tags**: #component #worker #ffmpeg #nats
-**Sources**: [[src/bin/subscriber.rs]]
+**Summary**: `crates/worker/src/main.rs` — pulls `JobEnvelope` messages one at a time from the durable NATS consumer, runs ffmpeg, streams byte-level stderr progress to a tokio channel, and publishes `StatusEvent` updates to NATS throughout the job lifecycle.
+**Tags**: #component #worker #ffmpeg #nats #progress
+**Sources**: [[crates/worker/src/main.rs]]
 **Related**: [[wiki/components/job-types]], [[wiki/components/publisher]], [[wiki/concepts/jetstream-pull-consumer]], [[wiki/issues/missing-db-and-progress]]
-**Last Updated**: 2026-06-22
+**Last Updated**: 2026-06-28
 
 ---
 
 ## Overview
 
-The worker is the consumer side of the queue. Each instance creates a durable pull consumer named `workers` on the `JOBS` stream, then loops: fetch one message, deserialize it as a `Job`, run it, ack. Multiple worker processes can run against the same consumer name and NATS will dynamically load-balance jobs between them — no explicit partitioning logic needed (→ [[wiki/concepts/jetstream-pull-consumer]]).
+The worker is the consumer side of the queue. Each instance creates a durable pull consumer named `workers` on the `JOBS` JetStream stream, then loops: fetch one message, deserialize as `JobEnvelope`, run the job, publish status events, ack. Multiple worker processes share the same consumer name — NATS dynamically distributes jobs between them with no explicit partitioning (→ [[wiki/concepts/jetstream-pull-consumer]]).
 
-Takes an optional numeric `worker_id` as `argv[1]`, used only for log line prefixes.
+The Tauri app spawns one worker sidecar per CPU core, each given a numeric `worker_id` via `argv[1]` used only for log prefixes.
 
 ## Details
 
-```rust
-let consumer = stream.get_or_create_consumer(
-    "workers",
-    async_nats::jetstream::consumer::pull::Config {
-        durable_name: Some("workers".to_string()),
-        ..Default::default()
-    },
-).await?;
+### Fetch loop
 
+```rust
 loop {
-    let messages = consumer.fetch().max_messages(1).messages().await?;
+    let messages = consumer.fetch()
+        .max_messages(1)
+        .expires(Duration::from_secs(5))
+        .messages().await?;
     if let Some(message) = messages.next().await {
-        let job: Job = serde_json::from_slice(&message.payload).unwrap();
-        match job {
-            Job::CutVideo(j) => {
-                println!("Worker {} processing job", worker_id);
-                match cut_video(j) {
-                    Ok(()) => println!("Worker {} done", worker_id),
-                    Err(e) => eprintln!("Worker {} failed: {}", worker_id, e),
-                }
-            }
-        }
+        let envelope: JobEnvelope = match serde_json::from_slice(&message.payload) {
+            Ok(e) => e,
+            Err(_) => { message.ack().await?; continue; }
+        };
+        // ... process ...
         message.ack().await?;
     }
 }
 ```
 
-`cut_video` shells out to `ffmpeg -y -i <input> -ss <start> -to <end> -c copy <output>` via `std::process::Command`, and returns `Err` if ffmpeg exits non-zero.
+`expires(5s)` means each fetch blocks at most 5 seconds before returning empty, which prevents the loop from stalling indefinitely. Empty fetches are logged every 5 occurrences to avoid flooding stdout.
 
-A previous version had a hardcoded `std::thread::sleep(Duration::from_secs(10))` before every ffmpeg run — debug scaffolding, since removed.
+Deserialization errors ack-and-skip instead of panicking — a malformed message is discarded rather than requeued forever.
+
+### Status event lifecycle
+
+For each `CutVideo` job, the worker publishes four kinds of `StatusEvent` on `jobs.status`:
+
+1. **`Received`** — immediately on dequeue, before any ffmpeg work
+2. **`Processing { percent }`** — streamed from ffmpeg stderr via an unbounded mpsc channel; a dedicated tokio task drains the channel and publishes each update
+3. **`Done`** or **`Failed { reason }`** — after ffmpeg exits
+
+### ffmpeg progress parsing
+
+```rust
+fn parse_time_secs(line: &str) -> Option<f64> {
+    let rest = &line[line.find("time=")? + "time=".len()..];
+    let time_str = &rest[..rest.find(' ').unwrap_or(rest.len())];
+    let mut parts = time_str.split(':');
+    let hours: f64 = parts.next()?.parse().ok()?;
+    let minutes: f64 = parts.next()?.parse().ok()?;
+    let seconds: f64 = parts.next()?.parse().ok()?;
+    Some(hours * 3600.0 + minutes * 60.0 + seconds)
+}
+```
+
+ffmpeg writes progress to stderr using `\r` (not `\n`) to overwrite the same terminal line. The worker reads stderr byte-by-byte, accumulating into a `String` and flushing on `\r` or `\n`. Each flush attempts `parse_time_secs`; on success, `percent = (elapsed / duration).clamp(0.0, 1.0) * 100.0` is sent to the channel.
+
+### Output path
+
+Output is resolved to `~/Videos/swiss-kyle/<job.output>` via the `dirs` crate. The directory is created if absent.
+
+### ffmpeg invocation
+
+```
+ffmpeg -y -i <input> -ss <start> -to <end> -c copy <output>
+```
+
+`-c copy` avoids re-encoding; `-y` overwrites without prompting.
 
 ## Decisions & Rationale
 
-Status is currently just `println!`/`eprintln!` — no DB write, no NATS progress publish. This was an explicit scope decision for backend v1: ship a working end-to-end pipeline first, defer persistence and percentage-progress until later (→ [[wiki/issues/missing-db-and-progress]]).
+A separate tokio task drains the progress channel rather than publishing inline in the stderr-read loop. This is necessary because `publish_status` is async and the ffmpeg stderr reading loop runs in a `spawn_blocking` thread. The unbounded channel is the bridge.
 
 ## Known Issues / Tech Debt
 
-- No ffmpeg stderr `time=` parsing → no percentage progress, despite `docs/DESIGN.md` specifying it.
-- No publish to the NATS `progress` subject, so `api.rs`'s websocket has nothing to forward.
-- No SurrealDB writes — job lifecycle (`pending`/`processing`/`done`/`failed`) only exists as console output, not as queryable state.
-- `message.payload` deserialization uses `.unwrap()` — a malformed message would panic the worker rather than nack/skip it.
+- No SurrealDB writes — job lifecycle exists in NATS events only, not in queryable persistent state (→ [[wiki/issues/missing-db-and-progress]]).
 
 ## Related
 
-[[wiki/components/publisher]], [[wiki/components/job-types]], [[wiki/issues/missing-db-and-progress]]
+[[wiki/components/job-types]], [[wiki/concepts/jetstream-pull-consumer]], [[wiki/components/tauri-app]], [[wiki/issues/missing-db-and-progress]]

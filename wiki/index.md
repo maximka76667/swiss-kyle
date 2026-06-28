@@ -1,6 +1,6 @@
 # Wiki Index
 
-_Last updated: 2026-06-22_
+_Last updated: 2026-06-28_
 
 ## Architecture
 
@@ -8,11 +8,14 @@ _Last updated: 2026-06-22_
 
 ## Components
 
-- [[wiki/components/job-types]] — `Job`/`CutVideo` message types shared over NATS
+- [[wiki/components/job-types]] — `JobEnvelope`, `Job`/`CutVideo`, `JobStatus`/`StatusEvent` — all NATS message types
 - [[wiki/components/publisher]] — Shared `Publisher` struct: connects to NATS, durably publishes jobs
-- [[wiki/components/worker]] — `subscriber.rs`: pulls jobs, runs ffmpeg, logs status
+- [[wiki/components/worker]] — `main.rs`: pulls jobs, runs ffmpeg, streams progress via mpsc, publishes StatusEvents
 - [[wiki/components/cli-publisher]] — `publisher.rs`: CLI for manually submitting jobs
-- [[wiki/components/http-api]] — `api.rs`: Axum HTTP/websocket service, slated for replacement by Tauri
+- [[wiki/components/http-api]] — `api.rs`: Axum HTTP/websocket service (replaced by Tauri app)
+- [[wiki/components/tauri-app]] — `src-tauri/src/lib.rs`: sidecar orchestration, Tauri commands, NATS status relay
+- [[wiki/components/video-server]] — `src-tauri/src/video_server.rs`: local Axum server serving videos with HTTP range support
+- [[wiki/components/frontend]] — `swiss-kyle-ui/`: React/TS app with VideoPlayer, TimelineSlider, CutVideo, JobHistory
 
 ## Decisions
 
@@ -27,7 +30,7 @@ _Last updated: 2026-06-22_
 ## Dependencies
 
 - [[wiki/dependencies/async-nats]] — NATS/JetStream client
-- [[wiki/dependencies/axum]] — HTTP framework behind `api.rs`
+- [[wiki/dependencies/axum]] — HTTP framework (used in video-server and formerly in api.rs)
 
 ## Questions
 
@@ -35,5 +38,5 @@ _(empty)_
 
 ## Issues
 
-- [[wiki/issues/missing-db-and-progress]] — No SurrealDB writes or ffmpeg progress parsing yet (deliberate v1 scope cut)
-- [[wiki/issues/api-rs-obsolescence]] — `api.rs` is temporary scaffolding, to be replaced by in-process Tauri calls
+- [[wiki/issues/missing-db-and-progress]] — Progress reporting done; SurrealDB persistence still missing
+- [[wiki/issues/api-rs-obsolescence]] — Resolved: Tauri app now handles job submission and status forwarding in-process
