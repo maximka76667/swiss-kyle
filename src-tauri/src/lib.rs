@@ -1,7 +1,7 @@
 mod video_server;
 
 use futures::StreamExt;
-use shared::{CutVideo, Job, JobEnvelope, Publisher, StatusEvent, STATUS_SUBJECT};
+use shared::{base_output_dir, ConvertToPdf, CutVideo, Job, JobEnvelope, Publisher, StatusEvent, STATUS_SUBJECT};
 use std::sync::Mutex;
 use std::time::Duration;
 use tauri::{Emitter, Manager};
@@ -11,6 +11,31 @@ use tauri_plugin_shell::ShellExt;
 struct VideoServerPort(u16);
 
 struct Sidecars(Mutex<Vec<CommandChild>>);
+
+/// Resolves a bundled external binary path.
+/// In a production bundle Tauri strips the target-triple suffix and places the
+/// binary in the resource directory. In dev mode the script puts it in
+/// `src-tauri/binaries/<name>-<triple>`, which lives under the resource dir.
+/// Falls back to the bare name so the OS PATH is used if neither is found.
+fn resolve_bin(app: &tauri::AppHandle, name: &str) -> String {
+    let Ok(resource_dir) = app.path().resource_dir() else {
+        return name.to_string();
+    };
+
+    let production = resource_dir.join(name);
+    if production.exists() {
+        return production.to_string_lossy().into_owned();
+    }
+
+    let dev = resource_dir
+        .join("binaries")
+        .join(format!("{}-{}", name, env!("TAURI_ENV_TARGET_TRIPLE")));
+    if dev.exists() {
+        return dev.to_string_lossy().into_owned();
+    }
+
+    name.to_string()
+}
 
 fn format_command_event(event: CommandEvent) -> String {
     match event {
@@ -27,14 +52,23 @@ fn get_stream_port(port: tauri::State<'_, VideoServerPort>) -> u16 {
 }
 
 #[tauri::command]
-fn open_output_folder(app: tauri::AppHandle) -> Result<(), String> {
-    let path = app.path().video_dir()
-        .map_err(|e| e.to_string())?
-        .join("swiss-kyle");
+fn open_output_folder(_app: tauri::AppHandle) -> Result<(), String> {
+    let path = base_output_dir();
     std::fs::create_dir_all(&path).ok();
     let opener = if cfg!(target_os = "macos") { "open" } else if cfg!(target_os = "windows") { "explorer" } else { "xdg-open" };
     std::process::Command::new(opener).arg(&path).spawn().map_err(|e| e.to_string())?;
     Ok(())
+}
+
+#[tauri::command]
+async fn submit_word_to_pdf_job(
+    publisher: tauri::State<'_, Publisher>,
+    input: String,
+    output: String,
+) -> Result<String, String> {
+    let job = JobEnvelope::new(Job::ConvertToPdf(ConvertToPdf { input, output }));
+    publisher.publish(&job).await.map_err(|e| e.to_string())?;
+    Ok(job.id)
 }
 
 #[tauri::command]
@@ -119,12 +153,20 @@ pub fn run() {
                 .unwrap_or(1);
             log::info!("spawning {} worker(s), one per CPU core", num_workers);
 
+            let ffmpeg_bin = resolve_bin(app.handle(), "ffmpeg");
+            let pandoc_bin = resolve_bin(app.handle(), "pandoc");
+            let typst_bin = resolve_bin(app.handle(), "typst");
+            log::info!("ffmpeg={} pandoc={} typst={}", ffmpeg_bin, pandoc_bin, typst_bin);
+
             let mut children = vec![nats_child];
             for worker_id in 0..num_workers {
                 let (mut worker_rx, worker_child) = app
                     .shell()
                     .sidecar("worker")?
                     .args([worker_id.to_string()])
+                    .env("FFMPEG_BIN", &ffmpeg_bin)
+                    .env("PANDOC_BIN", &pandoc_bin)
+                    .env("TYPST_BIN", &typst_bin)
                     .spawn()
                     .expect("failed to spawn worker sidecar");
                 tauri::async_runtime::spawn(async move {
@@ -139,7 +181,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![submit_cut_job, get_stream_port, open_output_folder])
+        .invoke_handler(tauri::generate_handler![submit_cut_job, submit_word_to_pdf_job, get_stream_port, open_output_folder])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {

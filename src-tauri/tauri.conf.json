@@ -33,7 +33,10 @@
     "targets": "all",
     "externalBin": [
       "binaries/nats-server",
-      "binaries/worker"
+      "binaries/worker",
+      "binaries/ffmpeg",
+      "binaries/pandoc",
+      "binaries/typst"
     ],
     "icon": [
       "icons/32x32.png",

@@ -1,3 +1,5 @@
+export type Tool = 'cut-video' | 'word-to-pdf'
+
 export type JobStatus =
   | 'Received'
   | { Processing: { percent: number } }
@@ -13,6 +15,7 @@ export type TrackedJobStatus = JobStatus | 'Submitted'
 
 export type TrackedJob = {
   id: string
+  tool: Tool
   input: string
   output: string
   status: TrackedJobStatus

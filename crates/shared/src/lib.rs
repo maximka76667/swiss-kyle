@@ -1,4 +1,15 @@
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+
+pub fn base_output_dir() -> PathBuf {
+    dirs::document_dir()
+        .unwrap_or_else(|| dirs::home_dir().expect("no home dir").join("Documents"))
+        .join("swiss-kyle")
+}
+
+pub fn output_dir(tool: &str) -> PathBuf {
+    base_output_dir().join(tool)
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JobEnvelope {
@@ -18,6 +29,7 @@ impl JobEnvelope {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Job {
     CutVideo(CutVideo),
+    ConvertToPdf(ConvertToPdf),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -26,6 +38,12 @@ pub struct CutVideo {
     pub output: String,
     pub start_secs: f64,
     pub end_secs: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ConvertToPdf {
+    pub input: String,
+    pub output: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

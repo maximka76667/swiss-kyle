@@ -1,4 +1,4 @@
-import { FolderOpen, X } from 'lucide-react'
+import { FolderOpen, Scissors, FileText, X } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,7 +13,12 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
-import type { TrackedJob, TrackedJobStatus } from '@/types/jobs'
+import type { Tool, TrackedJob, TrackedJobStatus } from '@/types/jobs'
+
+const TOOL_ICONS: Record<Tool, React.ElementType> = {
+  'cut-video': Scissors,
+  'word-to-pdf': FileText,
+}
 
 function statusBadgeVariant(
   status: TrackedJobStatus,
@@ -36,6 +41,12 @@ function statusLabel(status: TrackedJobStatus): string {
 function processingPercent(status: TrackedJobStatus): number | null {
   if (typeof status === 'object' && 'Processing' in status)
     return status.Processing.percent
+  return null
+}
+
+function failureReason(status: TrackedJobStatus): string | null {
+  if (typeof status === 'object' && 'Failed' in status)
+    return status.Failed.reason
   return null
 }
 
@@ -83,11 +94,13 @@ export function JobHistory({ jobs, onRemove }: { jobs: TrackedJob[]; onRemove: (
               <SidebarMenu>
                 {reversed.map((job, i) => {
                   const percent = processingPercent(job.status)
+                  const reason = failureReason(job.status)
                   return (
                     <SidebarMenuItem key={job.id}>
                       {i > 0 && <Separator />}
                       <div className="flex flex-col gap-1.5 px-3 py-2.5">
                         <div className="flex items-start gap-2">
+                          {(() => { const Icon = TOOL_ICONS[job.tool]; return <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" /> })()}
                           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                             <span className="truncate text-sm font-medium">{job.output}</span>
                             <span className="truncate text-xs text-muted-foreground" title={job.input}>
@@ -110,6 +123,9 @@ export function JobHistory({ jobs, onRemove }: { jobs: TrackedJob[]; onRemove: (
                           </div>
                         </div>
                         {percent !== null && <Progress value={percent} className="h-1" />}
+                        {reason !== null && (
+                          <p className="text-xs text-destructive break-words">{reason}</p>
+                        )}
                       </div>
                     </SidebarMenuItem>
                   )
