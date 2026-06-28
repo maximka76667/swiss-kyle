@@ -1,3 +1,4 @@
+use crate::error::process_error;
 use shared::{output_dir, ConvertToPdf};
 use std::process::Command;
 
@@ -17,18 +18,9 @@ pub fn run(job: ConvertToPdf, pandoc_bin: &str, typst_bin: &str) -> Result<(), B
 
     if !result.status.success() {
         let stderr = String::from_utf8_lossy(&result.stderr);
-        let stderr = stderr.trim();
-        return Err(if stderr.is_empty() {
-            format!("pandoc failed (exit {})", result.status).into()
-        } else {
-            format!("pandoc failed (exit {}): {}", result.status, stderr).into()
-        });
+        return Err(process_error("pandoc", result.status, &stderr));
     }
 
-    println!(
-        "output written: {} exists = {}",
-        output_path.display(),
-        output_path.exists()
-    );
+    println!("output written: {} exists = {}", output_path.display(), output_path.exists());
     Ok(())
 }

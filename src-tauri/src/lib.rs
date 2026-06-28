@@ -52,8 +52,12 @@ fn get_stream_port(port: tauri::State<'_, VideoServerPort>) -> u16 {
 }
 
 #[tauri::command]
-fn open_output_folder(_app: tauri::AppHandle) -> Result<(), String> {
-    let path = base_output_dir();
+fn open_output_folder(subfolder: String) -> Result<(), String> {
+    let path = if subfolder.is_empty() {
+        base_output_dir()
+    } else {
+        shared::output_dir(&subfolder)
+    };
     std::fs::create_dir_all(&path).ok();
     let opener = if cfg!(target_os = "macos") { "open" } else if cfg!(target_os = "windows") { "explorer" } else { "xdg-open" };
     std::process::Command::new(opener).arg(&path).spawn().map_err(|e| e.to_string())?;

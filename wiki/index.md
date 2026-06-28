@@ -40,3 +40,4 @@ _(empty)_
 
 - [[wiki/issues/missing-db-and-progress]] — Progress reporting done; SurrealDB persistence still missing
 - [[wiki/issues/api-rs-obsolescence]] — Resolved: Tauri app now handles job submission and status forwarding in-process
+- [[wiki/issues/user-friendly-process-errors]] — ffmpeg/pandoc errors shown as raw stderr; should map known patterns to plain-language guidance

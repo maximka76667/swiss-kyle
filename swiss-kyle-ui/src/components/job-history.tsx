@@ -76,7 +76,7 @@ export function JobHistory({ jobs, onRemove }: { jobs: TrackedJob[]; onRemove: (
             variant="ghost"
             size="icon-sm"
             title="Open output folder"
-            onClick={() => invoke('open_output_folder')}
+            onClick={() => invoke('open_output_folder', { subfolder: '' })}
           >
             <FolderOpen className="h-4 w-4" />
           </Button>

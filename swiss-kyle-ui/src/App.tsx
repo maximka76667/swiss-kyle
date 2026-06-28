@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Routes, Route } from 'react-router-dom'
 import { listen } from '@tauri-apps/api/event'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { SidebarProvider, SidebarInset, Sidebar } from '@/components/ui/sidebar'
@@ -9,13 +10,7 @@ import { WordToPdf } from '@/components/word-to-pdf'
 import { FloatingSidebarTrigger } from '@/components/floating-sidebar-trigger'
 import type { JobStatusEvent, Tool, TrackedJob } from '@/types/jobs'
 
-const TOOL_LABELS: Record<Tool, string> = {
-  'cut-video': 'Cut Video',
-  'word-to-pdf': 'Word to PDF',
-}
-
 function App() {
-  const [tool, setTool] = useState<Tool>('cut-video')
   const [jobs, setJobs] = useState<TrackedJob[]>([])
 
   useEffect(() => {
@@ -31,7 +26,7 @@ function App() {
     return () => { unlisten.then((f) => f()) }
   }, [])
 
-  function handleJobSubmitted(id: string, input: string, output: string) {
+  function handleJobSubmitted(id: string, tool: Tool, input: string, output: string) {
     setJobs((prev) => [
       ...prev,
       { id, tool, input, output, status: 'Submitted', submittedAt: new Date() },
@@ -44,20 +39,15 @@ function App() {
 
   return (
     <TooltipProvider>
-      <SidebarProvider defaultOpen style={{ '--sidebar-width': '200px' } as React.CSSProperties}>
-        <ToolNav selectedTool={tool} onSelectTool={setTool} />
+      <SidebarProvider defaultOpen={false} style={{ '--sidebar-width': '200px' } as React.CSSProperties}>
+        <ToolNav />
         <SidebarInset>
           <SidebarProvider style={{ '--sidebar-width': '480px' } as React.CSSProperties}>
             <SidebarInset>
-              <header className="flex h-12 shrink-0 items-center border-b px-4">
-                <span className="text-sm font-medium">{TOOL_LABELS[tool]}</span>
-              </header>
-              {tool === 'cut-video' && (
-                <CutVideo onJobSubmitted={handleJobSubmitted} />
-              )}
-              {tool === 'word-to-pdf' && (
-                <WordToPdf onJobSubmitted={handleJobSubmitted} />
-              )}
+              <Routes>
+                <Route path="/cut-video" element={<CutVideo onJobSubmitted={handleJobSubmitted} />} />
+                <Route path="/word-to-pdf" element={<WordToPdf onJobSubmitted={handleJobSubmitted} />} />
+              </Routes>
             </SidebarInset>
             <Sidebar side="right" collapsible="offcanvas">
               <JobHistory jobs={jobs} onRemove={handleRemoveJob} />

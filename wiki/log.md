@@ -4,6 +4,8 @@ Append-only. Claude writes one entry per operation. Do not edit manually.
 
 ---
 
+[2026-06-28] CREATE wiki/issues/user-friendly-process-errors → created: user-friendly-process-errors.md | updated: index.md
+
 <!-- Format:
 [YYYY-MM-DD] OPERATION source/path → created: [pages] | updated: [pages]
 -->

@@ -1,3 +1,4 @@
+use crate::error::process_error;
 use shared::{output_dir, CutVideo};
 use std::io::Read;
 use std::process::{Command, Stdio};
@@ -23,7 +24,6 @@ pub fn run(
     let output_dir = output_dir("cut-video");
     std::fs::create_dir_all(&output_dir)?;
     let output_path = output_dir.join(&job.output);
-    println!("resolved output path: {}", output_path.display());
 
     let args = [
         "-y".to_string(),
@@ -37,7 +37,6 @@ pub fn run(
         "copy".to_string(),
         output_path.to_string_lossy().into_owned(),
     ];
-    println!("ffmpeg args: {:?}", args);
 
     let mut child = Command::new(ffmpeg_bin)
         .args(&args)
@@ -46,11 +45,11 @@ pub fn run(
         .spawn()?;
 
     let duration_secs = (job.end_secs - job.start_secs).max(0.001);
-    // ffmpeg redraws its progress line with '\r' rather than '\n', so split on
-    // either byte instead of reading by line (which would block until EOF).
     let mut stderr = child.stderr.take().expect("stderr was piped");
     let mut line = String::new();
+    let mut stderr_buf = String::new();
     let mut byte = [0u8; 1];
+
     while stderr.read(&mut byte)? > 0 {
         match byte[0] {
             b'\r' | b'\n' => {
@@ -58,15 +57,22 @@ pub fn run(
                     let percent = ((secs / duration_secs) * 100.0).clamp(0.0, 100.0);
                     let _ = progress_tx.send(percent);
                 }
+                if !line.trim().is_empty() {
+                    stderr_buf.push_str(&line);
+                    stderr_buf.push('\n');
+                }
                 line.clear();
             }
             c => line.push(c as char),
         }
     }
+    if !line.trim().is_empty() {
+        stderr_buf.push_str(&line);
+    }
 
     let status = child.wait()?;
     if !status.success() {
-        return Err(format!("ffmpeg exited with {}", status).into());
+        return Err(process_error("ffmpeg", status, &stderr_buf));
     }
 
     println!("output written: {} exists = {}", output_path.display(), output_path.exists());

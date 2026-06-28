@@ -1,3 +1,4 @@
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Scissors, FileText } from 'lucide-react'
 import {
   Sidebar,
@@ -11,19 +12,16 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
-import type { Tool } from '@/types/jobs'
 
-const TOOLS: { id: Tool; label: string; icon: React.ElementType }[] = [
-  { id: 'cut-video', label: 'Cut Video', icon: Scissors },
-  { id: 'word-to-pdf', label: 'Word to PDF', icon: FileText },
+const TOOLS: { path: string; label: string; icon: React.ElementType }[] = [
+  { path: '/cut-video', label: 'Cut Video', icon: Scissors },
+  { path: '/word-to-pdf', label: 'PDF Converter', icon: FileText },
 ]
 
-interface Props {
-  selectedTool: Tool
-  onSelectTool: (tool: Tool) => void
-}
+export function ToolNav() {
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
 
-export function ToolNav({ selectedTool, onSelectTool }: Props) {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -34,12 +32,12 @@ export function ToolNav({ selectedTool, onSelectTool }: Props) {
           <SidebarGroupLabel>Tools</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {TOOLS.map(({ id, label, icon: Icon }) => (
-                <SidebarMenuItem key={id}>
+              {TOOLS.map(({ path, label, icon: Icon }) => (
+                <SidebarMenuItem key={path}>
                   <SidebarMenuButton
-                    isActive={selectedTool === id}
+                    isActive={pathname === path}
                     tooltip={label}
-                    onClick={() => onSelectTool(id)}
+                    onClick={() => navigate(path)}
                   >
                     <Icon className="h-4 w-4" />
                     <span>{label}</span>

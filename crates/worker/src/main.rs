@@ -1,5 +1,6 @@
 mod convert_to_pdf;
 mod cut_video;
+mod error;
 
 use futures::StreamExt;
 use shared::{Job, JobEnvelope, JobStatus, StatusEvent, publish_status};
