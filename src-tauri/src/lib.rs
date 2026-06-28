@@ -1,3 +1,5 @@
+mod video_server;
+
 use futures::StreamExt;
 use shared::{CutVideo, Job, JobEnvelope, Publisher, StatusEvent, STATUS_SUBJECT};
 use std::sync::Mutex;
@@ -5,6 +7,8 @@ use std::time::Duration;
 use tauri::{Emitter, Manager};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
+
+struct VideoServerPort(u16);
 
 struct Sidecars(Mutex<Vec<CommandChild>>);
 
@@ -15,6 +19,22 @@ fn format_command_event(event: CommandEvent) -> String {
         }
         other => format!("{:?}", other),
     }
+}
+
+#[tauri::command]
+fn get_stream_port(port: tauri::State<'_, VideoServerPort>) -> u16 {
+    port.0
+}
+
+#[tauri::command]
+fn open_output_folder(app: tauri::AppHandle) -> Result<(), String> {
+    let path = app.path().video_dir()
+        .map_err(|e| e.to_string())?
+        .join("swiss-kyle");
+    std::fs::create_dir_all(&path).ok();
+    let opener = if cfg!(target_os = "macos") { "open" } else if cfg!(target_os = "windows") { "explorer" } else { "xdg-open" };
+    std::process::Command::new(opener).arg(&path).spawn().map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -49,6 +69,8 @@ pub fn run() {
                 )?;
             }
 
+            app.manage(VideoServerPort(video_server::start()));
+
             let (mut nats_rx, nats_child) = app
                 .shell()
                 .sidecar("nats-server")?
@@ -61,8 +83,6 @@ pub fn run() {
                 }
             });
 
-            // Sidecar spawn is non-blocking, so the broker needs a moment to
-            // start listening before we can connect.
             let publisher = tauri::async_runtime::block_on(async {
                 for _ in 0..40 {
                     if let Ok(publisher) = Publisher::connect().await {
@@ -119,7 +139,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![submit_cut_job])
+        .invoke_handler(tauri::generate_handler![submit_cut_job, get_stream_port, open_output_folder])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {

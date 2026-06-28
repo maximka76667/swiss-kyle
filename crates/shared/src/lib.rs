@@ -8,12 +8,10 @@ pub struct JobEnvelope {
 
 impl JobEnvelope {
     pub fn new(job: Job) -> Self {
-        let id = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()
-            .to_string();
-        Self { id, job }
+        Self {
+            id: ulid::Ulid::new().to_string(),
+            job,
+        }
     }
 }
 
