@@ -29,7 +29,7 @@ impl JobEnvelope {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Job {
     CutVideo(CutVideo),
-    ConvertToPdf(ConvertToPdf),
+    ConvertDocument(ConvertDocument),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -41,9 +41,38 @@ pub struct CutVideo {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ConvertToPdf {
+pub struct ConvertDocument {
     pub input: String,
-    pub output: String,
+    pub output_stem: String,
+    pub to_format: DocFormat,
+    /// Only relevant when converting office files (doc/docx/odt/rtf) to PDF
+    pub converter: Option<Converter>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum DocFormat {
+    Markdown,
+    Docx,
+    Html,
+    Pdf,
+}
+
+impl DocFormat {
+    pub fn extension(&self) -> &'static str {
+        match self {
+            DocFormat::Markdown => "md",
+            DocFormat::Docx => "docx",
+            DocFormat::Html => "html",
+            DocFormat::Pdf => "pdf",
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum Converter {
+    /// Microsoft Word via COM automation (Windows only)
+    Word,
+    LibreOffice,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,76 +1,97 @@
-import { useState } from 'react'
-import { open } from '@tauri-apps/plugin-dialog'
-import { invoke } from '@tauri-apps/api/core'
-import { FolderOpen } from 'lucide-react'
-import { Upload } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { ToolPage } from '@/components/tool-page'
-import { cn } from '@/lib/utils'
-import type { Tool } from '@/types/jobs'
+import { useState } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
+import { invoke } from "@tauri-apps/api/core";
+import { FolderOpen } from "lucide-react";
+import { Upload } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ToolPage } from "@/components/tool-page";
+import { cn } from "@/lib/utils";
+import type { Tool } from "@/types/jobs";
 
 interface Props {
-  onJobSubmitted: (id: string, tool: Tool, input: string, output: string) => void
+  onJobSubmitted: (
+    id: string,
+    tool: Tool,
+    input: string,
+    output: string,
+  ) => void;
 }
 
 function basename(path: string): string {
-  return path.split(/[\\/]/).pop() ?? path
+  return path.split(/[\\/]/).pop() ?? path;
 }
 
 export function WordToPdf({ onJobSubmitted }: Props) {
-  const [inputPath, setInputPath] = useState<string | null>(null)
-  const [outputName, setOutputName] = useState('output.pdf')
-  const [isDragging, setIsDragging] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [inputPath, setInputPath] = useState<string | null>(null);
+  const [outputName, setOutputName] = useState("output.pdf");
+  const [converter, setConverter] = useState<"word" | "libreoffice">("word");
+  const [isDragging, setIsDragging] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isOfficeFile = inputPath
+    ? /\.(doc|docx|odt|rtf)$/i.test(inputPath)
+    : false;
 
   function applyFile(path: string) {
-    setInputPath(path)
-    const stem = path.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') ?? 'output'
-    setOutputName(`${stem}.pdf`)
-    setError(null)
+    setInputPath(path);
+    const stem =
+      path
+        .split(/[\\/]/)
+        .pop()
+        ?.replace(/\.[^.]+$/, "") ?? "output";
+    setOutputName(`${stem}.pdf`);
+    setError(null);
   }
 
   async function pickFile() {
     const path = await open({
       multiple: false,
-      filters: [{ name: 'Documents', extensions: ['docx', 'doc', 'odt', 'md', 'html', 'txt'] }],
-    })
-    if (typeof path === 'string') applyFile(path)
+      filters: [
+        {
+          name: "Documents",
+          extensions: ["docx", "doc", "odt", "md", "html", "txt"],
+        },
+      ],
+    });
+    if (typeof path === "string") applyFile(path);
   }
 
   function handleDragOver(e: React.DragEvent) {
-    e.preventDefault()
-    setIsDragging(true)
+    e.preventDefault();
+    setIsDragging(true);
   }
 
   function handleDragLeave(e: React.DragEvent) {
-    if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragging(false)
+    if (!e.currentTarget.contains(e.relatedTarget as Node))
+      setIsDragging(false);
   }
 
   function handleDrop(e: React.DragEvent) {
-    e.preventDefault()
-    setIsDragging(false)
-    const file = e.dataTransfer.files[0]
-    if (!file) return
-    const path = (file as any).path as string | undefined
-    if (path) applyFile(path)
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const path = (file as any).path as string | undefined;
+    if (path) applyFile(path);
   }
 
   async function submit() {
     if (!inputPath) {
-      setError('Pick a document file first')
-      return
+      setError("Pick a document file first");
+      return;
     }
-    setError(null)
+    setError(null);
     try {
-      const id = await invoke<string>('submit_word_to_pdf_job', {
+      const id = await invoke<string>("submit_word_to_pdf_job", {
         input: inputPath,
         output: outputName,
-      })
-      onJobSubmitted(id, 'word-to-pdf', inputPath, outputName)
+        converter,
+      });
+      onJobSubmitted(id, "doc-converter", inputPath, outputName);
     } catch (e) {
-      setError(`Failed: ${e}`)
+      setError(`Failed: ${e}`);
     }
   }
 
@@ -79,11 +100,13 @@ export function WordToPdf({ onJobSubmitted }: Props) {
       title="PDF Converter"
       description={
         <>
-          Convert documents into PDF using pandoc and typst. Supports .docx, .doc, .odt, .md, .html, and .txt.{' '}
-          Output is saved to{' '}
+          Convert documents into PDF using pandoc and typst. Supports .docx,
+          .doc, .odt, .md, .html, and .txt. Output is saved to{" "}
           <button
             className="inline-flex items-center gap-1 underline decoration-dotted hover:text-foreground transition-colors"
-            onClick={() => invoke('open_output_folder', { subfolder: 'convert-to-pdf' })}
+            onClick={() =>
+              invoke("open_output_folder", { subfolder: "convert-to-pdf" })
+            }
           >
             <FolderOpen className="h-3 w-3" />
             ~/Documents/swiss-kyle/convert-to-pdf/
@@ -94,10 +117,10 @@ export function WordToPdf({ onJobSubmitted }: Props) {
       <div className="flex flex-col gap-5">
         <div
           className={cn(
-            'flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-12 transition-colors',
+            "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-12 transition-colors",
             isDragging
-              ? 'border-primary bg-primary/5'
-              : 'border-muted-foreground/30 bg-muted/20 hover:bg-muted/30',
+              ? "border-primary bg-primary/5"
+              : "border-muted-foreground/30 bg-muted/20 hover:bg-muted/30",
           )}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -109,14 +132,36 @@ export function WordToPdf({ onJobSubmitted }: Props) {
             <p className="text-sm font-medium">{basename(inputPath)}</p>
           ) : (
             <div className="text-center">
-              <p className="text-sm text-muted-foreground">Drag & drop a document here</p>
-              <p className="mt-1 text-xs text-muted-foreground">or click to browse</p>
+              <p className="text-sm text-muted-foreground">
+                Drag & drop a document here
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                or click to browse
+              </p>
             </div>
           )}
         </div>
 
         {inputPath && (
           <>
+            {isOfficeFile && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="pdf-converter">Converter</Label>
+                <select
+                  id="pdf-converter"
+                  title="Select PDF converter"
+                  value={converter}
+                  onChange={(e) =>
+                    setConverter(e.target.value as typeof converter)
+                  }
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="word">Microsoft Word (Windows only)</option>
+                  <option value="libreoffice">LibreOffice</option>
+                </select>
+              </div>
+            )}
+
             <div className="flex flex-col gap-2">
               <Label htmlFor="pdf-output-name">Output filename</Label>
               <Input
@@ -135,5 +180,5 @@ export function WordToPdf({ onJobSubmitted }: Props) {
         {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
     </ToolPage>
-  )
+  );
 }

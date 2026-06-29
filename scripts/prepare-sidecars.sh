@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Load cargo/rustc into PATH when the shell doesn't inherit it (e.g. Tauri's beforeDevCommand)
+# shellcheck disable=SC1091
+[ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+
 cd "$(dirname "$0")/.."
 
-TRIPLE="$(rustc -vV | sed -n 's/host: //p')"
+TRIPLE="$(rustc -vV | sed -n 's/host: //p' | tr -d '\r')"
+echo "Detected triple: $TRIPLE"
 BIN_DIR="src-tauri/binaries"
 mkdir -p "$BIN_DIR"
 
@@ -41,7 +46,6 @@ extract_from_tar() {
 # Helper: download once, skip if the file is already non-empty.
 download_once() {
   local dest="$1" label="$2"
-  touch "$dest" && chmod +x "$dest"
   if [ -s "$dest" ]; then
     echo "$label already present, skipping download"
     return 1  # signal: skip

@@ -1,7 +1,7 @@
 mod video_server;
 
 use futures::StreamExt;
-use shared::{base_output_dir, ConvertToPdf, CutVideo, Job, JobEnvelope, Publisher, StatusEvent, STATUS_SUBJECT};
+use shared::{base_output_dir, Converter, ConvertDocument, DocFormat, CutVideo, Job, JobEnvelope, Publisher, StatusEvent, STATUS_SUBJECT};
 use std::sync::Mutex;
 use std::time::Duration;
 use tauri::{Emitter, Manager};
@@ -17,24 +17,27 @@ struct Sidecars(Mutex<Vec<CommandChild>>);
 /// binary in the resource directory. In dev mode the script puts it in
 /// `src-tauri/binaries/<name>-<triple>`, which lives under the resource dir.
 /// Falls back to the bare name so the OS PATH is used if neither is found.
+
 fn resolve_bin(app: &tauri::AppHandle, name: &str) -> String {
     let Ok(resource_dir) = app.path().resource_dir() else {
         return name.to_string();
     };
 
-    let production = resource_dir.join(name);
+    let ext = if cfg!(target_os = "windows") { ".exe" } else { "" };
+
+    let production = resource_dir.join(format!("{}{}", name, ext));
     if production.exists() {
         return production.to_string_lossy().into_owned();
     }
 
     let dev = resource_dir
         .join("binaries")
-        .join(format!("{}-{}", name, env!("TAURI_ENV_TARGET_TRIPLE")));
+        .join(format!("{}-{}{}", name, env!("TAURI_ENV_TARGET_TRIPLE"), ext));
     if dev.exists() {
         return dev.to_string_lossy().into_owned();
     }
 
-    name.to_string()
+    panic!("sidecar binary '{}' not found in resource dir {:?}", name, resource_dir)
 }
 
 fn format_command_event(event: CommandEvent) -> String {
@@ -65,12 +68,26 @@ fn open_output_folder(subfolder: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn submit_word_to_pdf_job(
+async fn submit_doc_convert_job(
     publisher: tauri::State<'_, Publisher>,
     input: String,
-    output: String,
+    output_stem: String,
+    to_format: String,
+    converter: Option<String>,
 ) -> Result<String, String> {
-    let job = JobEnvelope::new(Job::ConvertToPdf(ConvertToPdf { input, output }));
+    let to_format = match to_format.as_str() {
+        "md" => DocFormat::Markdown,
+        "docx" => DocFormat::Docx,
+        "html" => DocFormat::Html,
+        "pdf" => DocFormat::Pdf,
+        other => return Err(format!("unknown format: {}", other)),
+    };
+    let converter = match converter.as_deref() {
+        Some("word") => Some(Converter::Word),
+        Some("libreoffice") | None => Some(Converter::LibreOffice),
+        Some(other) => return Err(format!("unknown converter: {}", other)),
+    };
+    let job = JobEnvelope::new(Job::ConvertDocument(ConvertDocument { input, output_stem, to_format, converter }));
     publisher.publish(&job).await.map_err(|e| e.to_string())?;
     Ok(job.id)
 }
@@ -185,16 +202,19 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![submit_cut_job, submit_word_to_pdf_job, get_stream_port, open_output_folder])
+        .invoke_handler(tauri::generate_handler![submit_cut_job, submit_doc_convert_job, get_stream_port, open_output_folder])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
-            if let tauri::RunEvent::ExitRequested { .. } = event {
-                if let Some(sidecars) = app_handle.try_state::<Sidecars>() {
-                    for child in sidecars.0.lock().unwrap().drain(..) {
-                        let _ = child.kill();
+            match event {
+                tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit => {
+                    if let Some(sidecars) = app_handle.try_state::<Sidecars>() {
+                        for child in sidecars.0.lock().unwrap().drain(..) {
+                            let _ = child.kill();
+                        }
                     }
                 }
+                _ => {}
             }
         });
 }

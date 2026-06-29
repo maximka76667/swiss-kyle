@@ -1,5 +1,5 @@
-import { useNavigate, useLocation } from 'react-router-dom'
-import { Scissors, FileText } from 'lucide-react'
+import { useNavigate, useLocation } from "react-router-dom";
+import { Scissors, ArrowLeftRight } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -11,16 +11,16 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarTrigger,
-} from '@/components/ui/sidebar'
+} from "@/components/ui/sidebar";
 
 const TOOLS: { path: string; label: string; icon: React.ElementType }[] = [
-  { path: '/cut-video', label: 'Cut Video', icon: Scissors },
-  { path: '/word-to-pdf', label: 'PDF Converter', icon: FileText },
-]
+  { path: "/cut-video", label: "Cut Video", icon: Scissors },
+  { path: "/doc-converter", label: "Doc Converter", icon: ArrowLeftRight },
+];
 
 export function ToolNav() {
-  const navigate = useNavigate()
-  const { pathname } = useLocation()
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
 
   return (
     <Sidebar collapsible="icon">
@@ -49,5 +49,5 @@ export function ToolNav() {
         </SidebarGroup>
       </SidebarContent>
     </Sidebar>
-  )
+  );
 }

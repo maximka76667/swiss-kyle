@@ -41,3 +41,4 @@ _(empty)_
 - [[wiki/issues/missing-db-and-progress]] — SurrealDB persistence still planned but not implemented; job history resets on restart
 - [[wiki/issues/api-rs-obsolescence]] — Resolved: Tauri app now handles job submission and status forwarding in-process
 - [[wiki/issues/user-friendly-process-errors]] — ffmpeg/pandoc errors shown as raw stderr tail; should map known patterns to plain-language guidance
+- [[wiki/issues/onlyoffice-x2t-broken]] — x2t crashes on all files (font decoder JS error); remote Word-on-VPS noted as future alternative

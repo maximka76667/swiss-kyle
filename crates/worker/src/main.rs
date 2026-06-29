@@ -1,4 +1,4 @@
-mod convert_to_pdf;
+mod convert_document;
 mod cut_video;
 mod error;
 
@@ -92,6 +92,14 @@ async fn main() -> Result<(), async_nats::Error> {
                 Ok(e) => e,
                 Err(e) => {
                     eprintln!("Worker {} failed to deserialize job: {:?}", worker_id, e);
+                    let id = serde_json::from_slice::<serde_json::Value>(&message.payload)
+                        .ok()
+                        .and_then(|v| v.get("id")?.as_str().map(String::from))
+                        .unwrap_or_else(|| "unknown".to_string());
+                    let _ = publish_status(&client, &StatusEvent {
+                        id,
+                        status: JobStatus::Failed { reason: format!("failed to deserialize job: {}", e) },
+                    }).await;
                     let _ = message.ack().await;
                     continue;
                 }
@@ -132,7 +140,7 @@ async fn main() -> Result<(), async_nats::Error> {
                     let _ = progress_task.await;
                     result
                 }
-                Job::ConvertToPdf(j) => convert_to_pdf::run(j, &pandoc_bin, &typst_bin),
+                Job::ConvertDocument(j) => convert_document::run(j, &job_id, &pandoc_bin, &typst_bin),
             };
 
             let status = match final_status {

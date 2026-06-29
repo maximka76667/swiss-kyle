@@ -6,15 +6,15 @@
   "build": {
     "frontendDist": "../swiss-kyle-ui/dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "./scripts/prepare-sidecars.sh && cd swiss-kyle-ui && bun dev",
-    "beforeBuildCommand": "./scripts/prepare-sidecars.sh && cd swiss-kyle-ui && bun build"
+    "beforeDevCommand": "bun run prepare-sidecars.ts && cd swiss-kyle-ui && bun install && bun dev",
+    "beforeBuildCommand": "bun run prepare-sidecars.ts && cd swiss-kyle-ui && bun install && bun build"
   },
   "app": {
     "windows": [
       {
         "title": "Swiss Kyle",
-        "width": 800,
-        "height": 600,
+        "width": 1280,
+        "height": 750,
         "resizable": true,
         "fullscreen": false,
         "devtools": true
