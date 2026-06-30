@@ -172,7 +172,7 @@ fn convert_word_com(input: &str, pdf_path: &PathBuf) -> Result<(), Box<dyn std::
         .output()?;
 
     if !r.status.success() {
-        return Err(format!("Word COM failed: {}", String::from_utf8_lossy(&r.stderr)).into());
+        return Err(process_error("word", r.status, &String::from_utf8_lossy(&r.stderr)));
     }
 
     println!("output written: {}", pdf_path.display());
@@ -224,7 +224,7 @@ fn convert_libreoffice(input: &str, pdf_path: &PathBuf) -> Result<(), Box<dyn st
         .output()?;
 
     if !r.status.success() {
-        return Err(format!("LibreOffice failed: {}", String::from_utf8_lossy(&r.stderr)).into());
+        return Err(process_error("libreoffice", r.status, &String::from_utf8_lossy(&r.stderr)));
     }
 
     let input_stem = Path::new(input).file_stem().unwrap_or_default().to_string_lossy();
