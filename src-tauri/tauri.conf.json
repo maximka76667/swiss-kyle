@@ -7,7 +7,7 @@
     "frontendDist": "../swiss-kyle-ui/dist",
     "devUrl": "http://localhost:5173",
     "beforeDevCommand": "bun run prepare-sidecars.ts && cd swiss-kyle-ui && bun install && bun dev",
-    "beforeBuildCommand": "bun run prepare-sidecars.ts && cd swiss-kyle-ui && bun install && bun build"
+    "beforeBuildCommand": "bun run prepare-sidecars.ts && cd swiss-kyle-ui && bun install && bun run build"
   },
   "app": {
     "windows": [
