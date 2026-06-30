@@ -55,12 +55,13 @@ jobs:
       - name: Install macOS dependencies
         if: startsWith(matrix.platform, 'macos')
         run: |
-          brew install ffmpeg pandoc typst
+          brew install ffmpeg pandoc typst nats-server
           TRIPLE=$(rustc -vV | sed -n 's/host: //p' | tr -d '\r')
           mkdir -p src-tauri/binaries
           cp "$(brew --prefix ffmpeg)/bin/ffmpeg" "src-tauri/binaries/ffmpeg-${TRIPLE}"
           cp "$(brew --prefix pandoc)/bin/pandoc" "src-tauri/binaries/pandoc-${TRIPLE}"
           cp "$(brew --prefix typst)/bin/typst" "src-tauri/binaries/typst-${TRIPLE}"
+          cp "$(brew --prefix nats-server)/bin/nats-server" "src-tauri/binaries/nats-server-${TRIPLE}"
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
