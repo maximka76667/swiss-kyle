@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Swiss Kyle",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "com.swiss.kyle",
   "build": {
     "frontendDist": "../swiss-kyle-ui/dist",
     "devUrl": "http://localhost:5173",
