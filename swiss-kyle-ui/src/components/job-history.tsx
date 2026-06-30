@@ -50,9 +50,6 @@ function failureReason(status: TrackedJobStatus): string | null {
   return null;
 }
 
-function basename(path: string): string {
-  return path.split(/[\\/]/).pop() ?? path;
-}
 
 function formatDate(date: Date): string {
   return date.toLocaleString(undefined, {

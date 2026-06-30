@@ -46,18 +46,21 @@ jobs:
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf ffmpeg
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf ffmpeg pandoc
           TRIPLE=$(rustc -vV | sed -n 's/host: //p' | tr -d '\r')
           mkdir -p src-tauri/binaries
           cp "$(which ffmpeg)" "src-tauri/binaries/ffmpeg-${TRIPLE}"
+          cp "$(which pandoc)" "src-tauri/binaries/pandoc-${TRIPLE}"
 
       - name: Install macOS dependencies
         if: startsWith(matrix.platform, 'macos')
         run: |
-          brew install ffmpeg
+          brew install ffmpeg pandoc typst
           TRIPLE=$(rustc -vV | sed -n 's/host: //p' | tr -d '\r')
           mkdir -p src-tauri/binaries
           cp "$(brew --prefix ffmpeg)/bin/ffmpeg" "src-tauri/binaries/ffmpeg-${TRIPLE}"
+          cp "$(brew --prefix pandoc)/bin/pandoc" "src-tauri/binaries/pandoc-${TRIPLE}"
+          cp "$(brew --prefix typst)/bin/typst" "src-tauri/binaries/typst-${TRIPLE}"
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
