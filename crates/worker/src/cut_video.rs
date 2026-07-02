@@ -85,3 +85,36 @@ pub fn run(
     );
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_time_from_ffmpeg_progress_line() {
+        let line = "frame=  240 fps= 60 q=-1.0 size=    1024KiB time=00:01:30.50 bitrate= 928.4kbits/s speed=25.1x";
+        assert_eq!(parse_time_secs(line), Some(90.5));
+    }
+
+    #[test]
+    fn parses_time_at_end_of_line() {
+        assert_eq!(parse_time_secs("time=01:00:00.00"), Some(3600.0));
+    }
+
+    #[test]
+    fn line_without_time_is_none() {
+        assert_eq!(parse_time_secs("frame=  240 fps= 60 q=-1.0"), None);
+    }
+
+    #[test]
+    fn unparseable_time_is_none() {
+        // ffmpeg emits time=N/A before the first timestamp is known
+        assert_eq!(parse_time_secs("size=N/A time=N/A bitrate=N/A"), None);
+        assert_eq!(parse_time_secs("time=90.5 bitrate=..."), None);
+    }
+
+    #[test]
+    fn zero_time_is_zero_secs() {
+        assert_eq!(parse_time_secs("time=00:00:00.00 bitrate=..."), Some(0.0));
+    }
+}

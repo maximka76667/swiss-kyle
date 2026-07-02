@@ -284,3 +284,41 @@ fn strip_toc_links(src: &str) -> String {
     out.push_str(rest);
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn strips_single_toc_link_keeps_label() {
+        assert_eq!(
+            strip_toc_links("before #link(<_Toc123456789>)[Heading 1] after"),
+            "before [Heading 1] after"
+        );
+    }
+
+    #[test]
+    fn strips_multiple_toc_links() {
+        assert_eq!(
+            strip_toc_links("#link(<_Toc1>)[A]\n#link(<_Toc2>)[B]"),
+            "[A]\n[B]"
+        );
+    }
+
+    #[test]
+    fn leaves_text_without_toc_links_unchanged() {
+        let src = "= Heading\n#link(<other-anchor>)[see here] and plain text";
+        assert_eq!(strip_toc_links(src), src);
+    }
+
+    #[test]
+    fn unterminated_toc_link_is_kept_verbatim() {
+        let src = "text #link(<_Toc123 never closed";
+        assert_eq!(strip_toc_links(src), src);
+    }
+
+    #[test]
+    fn empty_input() {
+        assert_eq!(strip_toc_links(""), "");
+    }
+}
