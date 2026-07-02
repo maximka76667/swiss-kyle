@@ -1,5 +1,5 @@
 use crate::error::process_error;
-use shared::{output_dir, Converter, ConvertDocument, DocFormat};
+use shared::{ConvertDocument, Converter, DocFormat, output_dir};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -13,7 +13,10 @@ pub fn run(
     let ext = job.to_format.extension();
     let output_filename = format!("{}.{}", job.output_stem, ext);
 
-    println!("Converting {} → {} (format: {:?})", job.input, output_filename, job.to_format);
+    println!(
+        "Converting {} → {} (format: {:?})",
+        job.input, output_filename, job.to_format
+    );
 
     let output_root = output_dir("convert-document");
     fs::create_dir_all(&output_root)?;
@@ -63,7 +66,9 @@ fn convert(
                 Converter::LibreOffice => convert_libreoffice(&job.input, output_path),
             }
         }
-        (DocFormat::Pdf, false) => convert_pandoc_typst(&job.input, output_path, work_dir, pandoc_bin, typst_bin),
+        (DocFormat::Pdf, false) => {
+            convert_pandoc_typst(&job.input, output_path, work_dir, pandoc_bin, typst_bin)
+        }
         _ => convert_pandoc(&job.input, output_path, &job.to_format, pandoc_bin),
     }
 }
@@ -90,7 +95,11 @@ fn convert_pandoc(
         .output()?;
 
     if !r.status.success() {
-        return Err(process_error("pandoc", r.status, &String::from_utf8_lossy(&r.stderr)));
+        return Err(process_error(
+            "pandoc",
+            r.status,
+            &String::from_utf8_lossy(&r.stderr),
+        ));
     }
 
     println!("output written: {}", output_path.display());
@@ -116,7 +125,11 @@ fn convert_pandoc_typst(
         .arg("--extract-media=.")
         .output()?;
     if !r.status.success() {
-        return Err(process_error("pandoc", r.status, &String::from_utf8_lossy(&r.stderr)));
+        return Err(process_error(
+            "pandoc",
+            r.status,
+            &String::from_utf8_lossy(&r.stderr),
+        ));
     }
 
     let src = fs::read_to_string(&typ_path)?;
@@ -129,7 +142,11 @@ fn convert_pandoc_typst(
         .arg(pdf_path)
         .output()?;
     if !r.status.success() {
-        return Err(process_error("typst", r.status, &String::from_utf8_lossy(&r.stderr)));
+        return Err(process_error(
+            "typst",
+            r.status,
+            &String::from_utf8_lossy(&r.stderr),
+        ));
     }
 
     println!("output written: {}", pdf_path.display());
@@ -172,7 +189,11 @@ fn convert_word_com(input: &str, pdf_path: &PathBuf) -> Result<(), Box<dyn std::
         .output()?;
 
     if !r.status.success() {
-        return Err(process_error("word", r.status, &String::from_utf8_lossy(&r.stderr)));
+        return Err(process_error(
+            "word",
+            r.status,
+            &String::from_utf8_lossy(&r.stderr),
+        ));
     }
 
     println!("output written: {}", pdf_path.display());
@@ -200,7 +221,11 @@ fn find_libreoffice() -> Result<String, Box<dyn std::error::Error>> {
         }
     }
 
-    let name = if cfg!(target_os = "windows") { "soffice.exe" } else { "soffice" };
+    let name = if cfg!(target_os = "windows") {
+        "soffice.exe"
+    } else {
+        "soffice"
+    };
     if Command::new(name).arg("--version").output().is_ok() {
         return Ok(name.to_string());
     }
@@ -224,10 +249,17 @@ fn convert_libreoffice(input: &str, pdf_path: &PathBuf) -> Result<(), Box<dyn st
         .output()?;
 
     if !r.status.success() {
-        return Err(process_error("libreoffice", r.status, &String::from_utf8_lossy(&r.stderr)));
+        return Err(process_error(
+            "libreoffice",
+            r.status,
+            &String::from_utf8_lossy(&r.stderr),
+        ));
     }
 
-    let input_stem = Path::new(input).file_stem().unwrap_or_default().to_string_lossy();
+    let input_stem = Path::new(input)
+        .file_stem()
+        .unwrap_or_default()
+        .to_string_lossy();
     let lo_pdf = work_dir.join(format!("{}.pdf", input_stem));
     if lo_pdf != *pdf_path && lo_pdf.exists() {
         fs::rename(&lo_pdf, pdf_path)?;

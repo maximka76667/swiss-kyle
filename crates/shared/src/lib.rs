@@ -1,6 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+/// Globally unique, URL-safe id (ULID).
+pub fn new_id() -> String {
+    ulid::Ulid::new().to_string()
+}
+
 pub fn base_output_dir() -> PathBuf {
     dirs::document_dir()
         .unwrap_or_else(|| dirs::home_dir().expect("no home dir").join("Documents"))
@@ -19,10 +24,7 @@ pub struct JobEnvelope {
 
 impl JobEnvelope {
     pub fn new(job: Job) -> Self {
-        Self {
-            id: ulid::Ulid::new().to_string(),
-            job,
-        }
+        Self { id: new_id(), job }
     }
 }
 

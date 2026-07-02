@@ -12,16 +12,15 @@ interface VideoPlayerProps {
 export function VideoPlayer({ filePath, startSecs, endSecs, onRangeChange }: VideoPlayerProps) {
   const [duration, setDuration] = useState(0)
   const [currentTime, setCurrentTime] = useState(0)
-  const [port, setPort] = useState<number | null>(null)
+  const [src, setSrc] = useState('')
   const videoRef = useRef<HTMLVideoElement>(null)
   // Prevents canplay/durationchange firing mid-playback from resetting the range
   const rangeInitialized = useRef(false)
 
   useEffect(() => {
-    invoke<number>('get_stream_port').then(setPort)
-  }, [])
-
-  const src = port ? `http://127.0.0.1:${port}/?path=${encodeURIComponent(filePath)}` : ''
+    setSrc('')
+    invoke<string>('get_stream_url', { path: filePath }).then(setSrc)
+  }, [filePath])
 
   useEffect(() => {
     setDuration(0)

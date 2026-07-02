@@ -1,5 +1,5 @@
 use crate::error::process_error;
-use shared::{output_dir, CutVideo};
+use shared::{CutVideo, output_dir};
 use std::io::Read;
 use std::process::{Command, Stdio};
 use tokio::sync::mpsc::UnboundedSender;
@@ -19,7 +19,10 @@ pub fn run(
     ffmpeg_bin: &str,
     progress_tx: &UnboundedSender<f64>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    println!("Cutting {} → {} ({}-{}s)", job.input, job.output, job.start_secs, job.end_secs);
+    println!(
+        "Cutting {} → {} ({}-{}s)",
+        job.input, job.output, job.start_secs, job.end_secs
+    );
 
     let output_dir = output_dir("cut-video");
     std::fs::create_dir_all(&output_dir)?;
@@ -75,6 +78,10 @@ pub fn run(
         return Err(process_error("ffmpeg", status, &stderr_buf));
     }
 
-    println!("output written: {} exists = {}", output_path.display(), output_path.exists());
+    println!(
+        "output written: {} exists = {}",
+        output_path.display(),
+        output_path.exists()
+    );
     Ok(())
 }

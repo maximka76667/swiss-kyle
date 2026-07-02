@@ -2,13 +2,17 @@ mod video_server;
 
 use futures::StreamExt;
 use shared::{base_output_dir, Converter, ConvertDocument, DocFormat, CutVideo, Job, JobEnvelope, Publisher, StatusEvent, STATUS_SUBJECT};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{Emitter, Manager};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
+use video_server::Registry;
 
-struct VideoServerPort(u16);
+struct VideoServer {
+    port: u16,
+    registry: Arc<Registry>,
+}
 
 struct Sidecars(Mutex<Vec<CommandChild>>);
 
@@ -49,9 +53,13 @@ fn format_command_event(event: CommandEvent) -> String {
     }
 }
 
+/// Registers `path` with the video server and returns a URL that streams it.
+/// The URL carries an unguessable token, not the path, so the server never
+/// exposes arbitrary files on disk.
 #[tauri::command]
-fn get_stream_port(port: tauri::State<'_, VideoServerPort>) -> u16 {
-    port.0
+fn get_stream_url(server: tauri::State<'_, VideoServer>, path: String) -> String {
+    let token = server.registry.register(path.into());
+    format!("http://127.0.0.1:{}/?token={}", server.port, token)
 }
 
 #[tauri::command]
@@ -124,7 +132,11 @@ pub fn run() {
                 )?;
             }
 
-            app.manage(VideoServerPort(video_server::start()));
+            let (video_port, video_registry) = video_server::start();
+            app.manage(VideoServer {
+                port: video_port,
+                registry: video_registry,
+            });
 
             let (mut nats_rx, nats_child) = app
                 .shell()
@@ -202,7 +214,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![submit_cut_job, submit_doc_convert_job, get_stream_port, open_output_folder])
+        .invoke_handler(tauri::generate_handler![submit_cut_job, submit_doc_convert_job, get_stream_url, open_output_folder])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
