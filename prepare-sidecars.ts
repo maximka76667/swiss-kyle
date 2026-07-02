@@ -19,6 +19,7 @@ mkdirSync(BIN_DIR, { recursive: true });
 const NATS_VERSION = "2.10.22";
 const PANDOC_VERSION = "3.6.3";
 const TYPST_VERSION = "0.15.0";
+const PDFCPU_VERSION = "0.13.0";
 // Kill stale sidecar processes that would lock binaries during rebuild
 if (isWindows) {
   spawnSync("taskkill", ["/F", "/IM", "worker.exe", "/T"], { stdio: "ignore" });
@@ -218,6 +219,38 @@ await downloadBinary(
     "x86_64-pc-windows-gnu": {
       url: `https://github.com/typst/typst/releases/download/v${TYPST_VERSION}/typst-x86_64-pc-windows-msvc.zip`,
       binary: "typst.exe",
+    },
+  },
+);
+
+// --- pdfcpu ---
+await downloadBinary(
+  `${BIN_DIR}/pdfcpu-${TRIPLE}${EXT}`,
+  `pdfcpu ${PDFCPU_VERSION}`,
+  {
+    "x86_64-unknown-linux-gnu": {
+      url: `https://github.com/pdfcpu/pdfcpu/releases/download/v${PDFCPU_VERSION}/pdfcpu_${PDFCPU_VERSION}_Linux_x86_64.tar.xz`,
+      binary: "pdfcpu",
+    },
+    "aarch64-unknown-linux-gnu": {
+      url: `https://github.com/pdfcpu/pdfcpu/releases/download/v${PDFCPU_VERSION}/pdfcpu_${PDFCPU_VERSION}_Linux_arm64.tar.xz`,
+      binary: "pdfcpu",
+    },
+    "x86_64-apple-darwin": {
+      url: `https://github.com/pdfcpu/pdfcpu/releases/download/v${PDFCPU_VERSION}/pdfcpu_${PDFCPU_VERSION}_Darwin_x86_64.tar.xz`,
+      binary: "pdfcpu",
+    },
+    "aarch64-apple-darwin": {
+      url: `https://github.com/pdfcpu/pdfcpu/releases/download/v${PDFCPU_VERSION}/pdfcpu_${PDFCPU_VERSION}_Darwin_arm64.tar.xz`,
+      binary: "pdfcpu",
+    },
+    "x86_64-pc-windows-msvc": {
+      url: `https://github.com/pdfcpu/pdfcpu/releases/download/v${PDFCPU_VERSION}/pdfcpu_${PDFCPU_VERSION}_Windows_x86_64.zip`,
+      binary: "pdfcpu.exe",
+    },
+    "x86_64-pc-windows-gnu": {
+      url: `https://github.com/pdfcpu/pdfcpu/releases/download/v${PDFCPU_VERSION}/pdfcpu_${PDFCPU_VERSION}_Windows_x86_64.zip`,
+      binary: "pdfcpu.exe",
     },
   },
 );

@@ -1,5 +1,5 @@
 use crate::consumer::HEARTBEAT_INTERVAL;
-use crate::{convert_document, cut_video};
+use crate::{convert_document, cut_video, merge_pdfs};
 use async_nats::jetstream::{AckKind, Message};
 use shared::{Job, JobEnvelope, JobStatus, StatusEvent, publish_status};
 
@@ -7,6 +7,7 @@ pub struct Bins {
     pub ffmpeg: String,
     pub pandoc: String,
     pub typst: String,
+    pub pdfcpu: String,
 }
 
 impl Bins {
@@ -18,6 +19,7 @@ impl Bins {
             ffmpeg: get("FFMPEG_BIN", "ffmpeg"),
             pandoc: get("PANDOC_BIN", "pandoc"),
             typst: get("TYPST_BIN", "typst"),
+            pdfcpu: get("PDFCPU_BIN", "pdfcpu"),
         }))
     }
 }
@@ -113,6 +115,7 @@ async fn run_job(
         match envelope.job {
             Job::CutVideo(j) => cut_video::run(j, &bins.ffmpeg, &progress_tx),
             Job::ConvertDocument(j) => convert_document::run(j, &job_id, &bins.pandoc, &bins.typst),
+            Job::MergePdfs(j) => merge_pdfs::run(j, &bins.pdfcpu),
         }
         .map_err(|e| e.to_string())
     });

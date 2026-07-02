@@ -3,6 +3,7 @@ mod convert_document;
 mod cut_video;
 mod error;
 mod job;
+mod merge_pdfs;
 
 use consumer::ensure_consumer;
 use futures::StreamExt;
@@ -17,8 +18,8 @@ async fn main() -> Result<(), async_nats::Error> {
         .unwrap_or(0);
     let bins = Bins::from_env();
     println!(
-        "Worker {worker_id} using ffmpeg={} pandoc={} typst={}",
-        bins.ffmpeg, bins.pandoc, bins.typst
+        "Worker {worker_id} using ffmpeg={} pandoc={} typst={} pdfcpu={}",
+        bins.ffmpeg, bins.pandoc, bins.typst, bins.pdfcpu
     );
 
     let client = async_nats::connect("nats://localhost:4222").await?;

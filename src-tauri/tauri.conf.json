@@ -36,7 +36,8 @@
       "binaries/worker",
       "binaries/ffmpeg",
       "binaries/pandoc",
-      "binaries/typst"
+      "binaries/typst",
+      "binaries/pdfcpu"
     ],
     "icon": [
       "icons/32x32.png",

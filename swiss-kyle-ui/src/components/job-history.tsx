@@ -1,4 +1,4 @@
-import { FolderOpen, Scissors, ArrowLeftRight, X } from "lucide-react";
+import { FolderOpen, Scissors, ArrowLeftRight, Combine, X } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import type { Tool, TrackedJob, TrackedJobStatus } from "@/types/jobs";
 const TOOL_ICONS: Record<Tool, React.ElementType> = {
   "cut-video": Scissors,
   "doc-converter": ArrowLeftRight,
+  "merge-pdfs": Combine,
 };
 
 function statusBadgeVariant(

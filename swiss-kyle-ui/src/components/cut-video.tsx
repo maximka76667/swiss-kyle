@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { open } from '@tauri-apps/plugin-dialog'
 import { invoke } from '@tauri-apps/api/core'
+import { toast } from 'sonner'
 import { Upload, FolderOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,7 +9,10 @@ import { Label } from '@/components/ui/label'
 import { VideoPlayer } from '@/components/video-player'
 import { ToolPage } from '@/components/tool-page'
 import { cn } from '@/lib/utils'
+import { useFileDrop } from '@/hooks/use-file-drop'
 import type { Tool } from '@/types/jobs'
+
+const VIDEO_EXTS = ['mp4', 'mov', 'mkv', 'webm']
 
 interface Props {
   onJobSubmitted: (id: string, tool: Tool, input: string, output: string) => void
@@ -18,24 +22,35 @@ function basename(path: string): string {
   return path.split(/[\\/]/).pop() ?? path
 }
 
+function extOf(path: string): string {
+  return basename(path).split('.').pop()?.toLowerCase() ?? ''
+}
+
 export function CutVideo({ onJobSubmitted }: Props) {
   const [inputPath, setInputPath] = useState<string | null>(null)
   const [outputName, setOutputName] = useState('output.mp4')
   const [startSecs, setStartSecs] = useState(0)
   const [endSecs, setEndSecs] = useState(0)
-  const [isDragging, setIsDragging] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   function applyFile(path: string) {
+    const ext = extOf(path)
+    if (!VIDEO_EXTS.includes(ext)) {
+      toast.error(`Not a supported video file: ${basename(path)}`, {
+        description: `Expected one of: ${VIDEO_EXTS.map((e) => `.${e}`).join(', ')}`,
+      })
+      return
+    }
     setInputPath(path)
-    const filename = path.split(/[\\/]/).pop() ?? 'output'
-    const ext = filename.includes('.') ? filename.slice(filename.lastIndexOf('.')) : '.mp4'
+    const filename = basename(path)
     const stem = filename.slice(0, filename.lastIndexOf('.')) || filename
-    setOutputName(`${stem}-cut${ext}`)
+    setOutputName(`${stem}-cut.${ext}`)
     setStartSecs(0)
     setEndSecs(0)
-    setError(null)
   }
+
+  const { isDragging } = useFileDrop((paths) => {
+    if (paths[0]) applyFile(paths[0])
+  })
 
   async function pickFile() {
     const path = await open({
@@ -45,30 +60,11 @@ export function CutVideo({ onJobSubmitted }: Props) {
     if (typeof path === 'string') applyFile(path)
   }
 
-  function handleDragOver(e: React.DragEvent) {
-    e.preventDefault()
-    setIsDragging(true)
-  }
-
-  function handleDragLeave(e: React.DragEvent) {
-    if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragging(false)
-  }
-
-  function handleDrop(e: React.DragEvent) {
-    e.preventDefault()
-    setIsDragging(false)
-    const file = e.dataTransfer.files[0]
-    if (!file) return
-    const path = (file as any).path as string | undefined
-    if (path) applyFile(path)
-  }
-
   async function submit() {
     if (!inputPath) {
-      setError('Pick a video file first')
+      toast.error('Pick a video file first')
       return
     }
-    setError(null)
     try {
       const id = await invoke<string>('submit_cut_job', {
         input: inputPath,
@@ -78,7 +74,7 @@ export function CutVideo({ onJobSubmitted }: Props) {
       })
       onJobSubmitted(id, 'cut-video', inputPath, outputName)
     } catch (e) {
-      setError(`Failed: ${e}`)
+      toast.error(`Failed to submit job: ${e}`)
     }
   }
 
@@ -107,9 +103,6 @@ export function CutVideo({ onJobSubmitted }: Props) {
               ? 'border-primary bg-primary/5'
               : 'border-muted-foreground/30 bg-muted/20 hover:bg-muted/30',
           )}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
           onClick={pickFile}
         >
           <Upload className="h-8 w-8 text-muted-foreground" />
@@ -167,8 +160,6 @@ export function CutVideo({ onJobSubmitted }: Props) {
             </Button>
           </>
         )}
-
-        {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
     </ToolPage>
   )

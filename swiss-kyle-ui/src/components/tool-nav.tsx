@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Scissors, ArrowLeftRight } from "lucide-react";
+import { Scissors, ArrowLeftRight, Combine } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -16,6 +16,7 @@ import {
 const TOOLS: { path: string; label: string; icon: React.ElementType }[] = [
   { path: "/cut-video", label: "Cut Video", icon: Scissors },
   { path: "/doc-converter", label: "Doc Converter", icon: ArrowLeftRight },
+  { path: "/merge-pdfs", label: "Merge PDFs", icon: Combine },
 ];
 
 export function ToolNav() {

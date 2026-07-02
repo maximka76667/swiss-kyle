@@ -1,6 +1,7 @@
-use crate::VideoServer;
+use crate::{PdfcpuBin, VideoServer};
 use shared::{
-    base_output_dir, Converter, ConvertDocument, CutVideo, DocFormat, Job, JobEnvelope, Publisher,
+    base_output_dir, Converter, ConvertDocument, CutVideo, DocFormat, Job, JobEnvelope, MergePdfs,
+    Publisher,
 };
 
 /// Registers `path` with the video server and returns a URL that streams it.
@@ -66,4 +67,48 @@ pub(crate) async fn submit_cut_job(
     }));
     publisher.publish(&job).await.map_err(|e| e.to_string())?;
     Ok(job.id)
+}
+
+#[tauri::command]
+pub(crate) async fn submit_merge_pdfs_job(
+    publisher: tauri::State<'_, Publisher>,
+    inputs: Vec<String>,
+    output_stem: String,
+) -> Result<String, String> {
+    if inputs.len() < 2 {
+        return Err("select at least 2 PDFs to merge".to_string());
+    }
+    let job = JobEnvelope::new(Job::MergePdfs(MergePdfs { inputs, output_stem }));
+    publisher.publish(&job).await.map_err(|e| e.to_string())?;
+    Ok(job.id)
+}
+
+/// Reads a PDF's page count via `pdfcpu info --json` for display in the
+/// merge-order picker. pdfcpu has no page-rasterization capability, so this
+/// is the closest thing to a thumbnail we can offer without a second tool.
+#[tauri::command]
+pub(crate) async fn get_pdf_page_count(
+    pdfcpu: tauri::State<'_, PdfcpuBin>,
+    path: String,
+) -> Result<u32, String> {
+    let bin = pdfcpu.0.clone();
+    tokio::task::spawn_blocking(move || {
+        let output = std::process::Command::new(&bin)
+            .arg("info")
+            .arg("--json")
+            .arg(&path)
+            .output()
+            .map_err(|e| e.to_string())?;
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
+        }
+        let json: serde_json::Value =
+            serde_json::from_slice(&output.stdout).map_err(|e| e.to_string())?;
+        json["infos"][0]["pageCount"]
+            .as_u64()
+            .map(|n| n as u32)
+            .ok_or_else(|| "pageCount missing from pdfcpu output".to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }

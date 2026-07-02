@@ -32,6 +32,7 @@ impl JobEnvelope {
 pub enum Job {
     CutVideo(CutVideo),
     ConvertDocument(ConvertDocument),
+    MergePdfs(MergePdfs),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -49,6 +50,13 @@ pub struct ConvertDocument {
     pub to_format: DocFormat,
     /// Only relevant when converting office files (doc/docx/odt/rtf) to PDF
     pub converter: Option<Converter>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MergePdfs {
+    /// Merge order, at least 2 inputs.
+    pub inputs: Vec<String>,
+    pub output_stem: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]

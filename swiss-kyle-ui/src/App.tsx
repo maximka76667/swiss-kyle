@@ -11,7 +11,9 @@ import { ToolNav } from "@/components/tool-nav";
 import { JobHistory } from "@/components/job-history";
 import { CutVideo } from "@/components/cut-video";
 import { DocConverter } from "@/components/doc-converter";
+import { MergePdfs } from "@/components/merge-pdfs";
 import { FloatingSidebarTrigger } from "@/components/floating-sidebar-trigger";
+import { Toaster } from "@/components/ui/sonner";
 import type { JobStatus, JobStatusEvent, Tool, TrackedJob } from "@/types/jobs";
 
 function App() {
@@ -65,6 +67,7 @@ function App() {
 
   return (
     <TooltipProvider>
+      <Toaster position="bottom-right" />
       <SidebarProvider
         defaultOpen={false}
         style={{ "--sidebar-width": "200px" } as React.CSSProperties}
@@ -83,6 +86,10 @@ function App() {
                 <Route
                   path="/doc-converter"
                   element={<DocConverter onJobSubmitted={handleJobSubmitted} />}
+                />
+                <Route
+                  path="/merge-pdfs"
+                  element={<MergePdfs onJobSubmitted={handleJobSubmitted} />}
                 />
               </Routes>
             </SidebarInset>

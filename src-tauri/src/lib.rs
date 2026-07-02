@@ -18,6 +18,8 @@ struct VideoServer {
 
 struct Sidecars(Mutex<Vec<CommandChild>>);
 
+pub(crate) struct PdfcpuBin(pub String);
+
 /// Kills any sidecars spawned so far, shows a blocking error dialog, and
 /// exits. Startup failures must go through this instead of panicking: a
 /// panic in setup() is invisible to the user in a release build (no
@@ -170,7 +172,12 @@ pub fn run() {
             let ffmpeg_bin = resolve("ffmpeg");
             let pandoc_bin = resolve("pandoc");
             let typst_bin = resolve("typst");
-            log::info!("ffmpeg={} pandoc={} typst={}", ffmpeg_bin, pandoc_bin, typst_bin);
+            let pdfcpu_bin = resolve("pdfcpu");
+            log::info!(
+                "ffmpeg={} pandoc={} typst={} pdfcpu={}",
+                ffmpeg_bin, pandoc_bin, typst_bin, pdfcpu_bin
+            );
+            app.manage(PdfcpuBin(pdfcpu_bin.clone()));
 
             for worker_id in 0..num_workers {
                 let (mut worker_rx, worker_child) = app
@@ -181,6 +188,7 @@ pub fn run() {
                             .env("FFMPEG_BIN", &ffmpeg_bin)
                             .env("PANDOC_BIN", &pandoc_bin)
                             .env("TYPST_BIN", &typst_bin)
+                            .env("PDFCPU_BIN", &pdfcpu_bin)
                             .spawn()
                     })
                     .unwrap_or_else(|e| {
@@ -199,6 +207,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::submit_cut_job,
             commands::submit_doc_convert_job,
+            commands::submit_merge_pdfs_job,
+            commands::get_pdf_page_count,
             commands::get_stream_url,
             commands::open_output_folder
         ])

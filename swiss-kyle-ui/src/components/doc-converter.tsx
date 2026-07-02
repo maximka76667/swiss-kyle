@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
+import { toast } from "sonner";
 import { FolderOpen, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ToolPage } from "@/components/tool-page";
 import { cn } from "@/lib/utils";
+import { useFileDrop } from "@/hooks/use-file-drop";
 import type { Tool } from "@/types/jobs";
 
 type DocFormat = "md" | "docx" | "html" | "pdf";
@@ -52,24 +54,31 @@ export function DocConverter({ onJobSubmitted }: Props) {
   const [outputStem, setOutputStem] = useState("output");
   const [toFormat, setToFormat] = useState<DocFormat>("pdf");
   const [converter, setConverter] = useState<Converter>("word");
-  const [isDragging, setIsDragging] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const availableFormats = inputExt ? outputFormats(inputExt) : [];
   const showConverter = OFFICE_EXTS.has(inputExt) && toFormat === "pdf";
 
   function applyFile(path: string) {
     const ext = path.split(".").pop()?.toLowerCase() ?? "";
+    if (!(ext in INPUT_EXT_TO_FORMAT)) {
+      toast.error(`Not a supported document file: ${basename(path)}`, {
+        description: `Expected one of: ${Object.keys(INPUT_EXT_TO_FORMAT).map((e) => `.${e}`).join(", ")}`,
+      });
+      return;
+    }
     const stem = basename(path).replace(/\.[^.]+$/, "");
     setInputPath(path);
     setInputExt(ext);
     setOutputStem(stem);
-    setError(null);
     const formats = outputFormats(ext);
     if (formats.length > 0 && !formats.includes(toFormat)) {
       setToFormat(formats[0]);
     }
   }
+
+  const { isDragging } = useFileDrop((paths) => {
+    if (paths[0]) applyFile(paths[0]);
+  });
 
   async function pickFile() {
     const path = await open({
@@ -84,32 +93,15 @@ export function DocConverter({ onJobSubmitted }: Props) {
     if (typeof path === "string") applyFile(path);
   }
 
-  function handleDragOver(e: React.DragEvent) {
-    e.preventDefault();
-    setIsDragging(true);
-  }
-
-  function handleDragLeave(e: React.DragEvent) {
-    if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragging(false);
-  }
-
-  function handleDrop(e: React.DragEvent) {
-    e.preventDefault();
-    setIsDragging(false);
-    const path = (e.dataTransfer.files[0] as any)?.path as string | undefined;
-    if (path) applyFile(path);
-  }
-
   async function submit() {
     if (!inputPath) {
-      setError("Pick a document file first");
+      toast.error("Pick a document file first");
       return;
     }
     if (!outputStem.trim()) {
-      setError("Output title cannot be empty");
+      toast.error("Output title cannot be empty");
       return;
     }
-    setError(null);
     try {
       const id = await invoke<string>("submit_doc_convert_job", {
         input: inputPath,
@@ -119,7 +111,7 @@ export function DocConverter({ onJobSubmitted }: Props) {
       });
       onJobSubmitted(id, "doc-converter", inputPath, `${outputStem.trim()}.${toFormat}`);
     } catch (e) {
-      setError(`Failed: ${e}`);
+      toast.error(`Failed to submit job: ${e}`);
     }
   }
 
@@ -147,9 +139,6 @@ export function DocConverter({ onJobSubmitted }: Props) {
               ? "border-primary bg-primary/5"
               : "border-muted-foreground/30 bg-muted/20 hover:bg-muted/30",
           )}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
           onClick={pickFile}
         >
           <Upload className="h-8 w-8 text-muted-foreground" />
@@ -210,8 +199,6 @@ export function DocConverter({ onJobSubmitted }: Props) {
             </Button>
           </>
         )}
-
-        {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
     </ToolPage>
   );

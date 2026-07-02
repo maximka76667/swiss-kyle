@@ -6,13 +6,14 @@ A desktop toolbox for local media and document jobs, built with Tauri 2 and Reac
 
 - **Cut video** — trim clips with ffmpeg stream copy (`-c copy`), so cuts take seconds regardless of file size, with a scrubbing timeline and in-app preview.
 - **Convert documents** — Markdown/HTML/Docx conversions via pandoc, PDF output via typst, and Office formats (doc/docx/odt/rtf) to PDF via LibreOffice or Microsoft Word (Windows only).
+- **Merge PDFs** — combine PDFs in a drag-to-reorder list via [pdfcpu](https://pdfcpu.io/).
 
 ## How it works
 
 The Tauri shell spawns two kinds of sidecar processes at startup:
 
 - an embedded **NATS server** with JetStream, acting as a durable local job queue
-- up to four **worker** processes (one per CPU core, capped at 4) that pull jobs from the queue and drive ffmpeg/pandoc/typst/LibreOffice/Word
+- up to four **worker** processes (one per CPU core, capped at 4) that pull jobs from the queue and drive ffmpeg/pandoc/typst/pdfcpu/LibreOffice/Word
 
 The UI submits jobs through Tauri commands (`src-tauri/src/commands.rs`), which publish job envelopes to JetStream. Workers ack with progress heartbeats while a job runs, so a crashed worker's jobs are redelivered quickly. Status and progress events flow back over NATS and are re-emitted to the UI as `job-status` events.
 
@@ -24,7 +25,7 @@ Video preview is served by a localhost HTTP server that only streams files regis
 swiss-kyle-ui/        React + Vite frontend (bun)
 src-tauri/            Tauri app shell: lifecycle, sidecar spawning, video server, commands
 crates/shared/        Job types, NATS publisher, shared helpers
-crates/worker/        Worker binary: job consumer + ffmpeg/pandoc/typst runners
+crates/worker/        Worker binary: job consumer + ffmpeg/pandoc/typst/pdfcpu runners
 prepare-sidecars.ts   Builds the worker and downloads pinned sidecar binaries
 wiki/                 LLM-maintained knowledge base (see CLAUDE.md)
 ```
@@ -38,7 +39,7 @@ bun install
 bun tauri dev
 ```
 
-The dev command first runs `prepare-sidecars.ts`, which builds the worker crate and downloads sidecar binaries into `src-tauri/binaries/` — pinned versions of nats-server, pandoc, and typst, plus the latest ffmpeg build. The first run is slow; afterwards the downloads are cached.
+The dev command first runs `prepare-sidecars.ts`, which builds the worker crate and downloads sidecar binaries into `src-tauri/binaries/` — pinned versions of nats-server, pandoc, typst, and pdfcpu, plus the latest ffmpeg build. The first run is slow; afterwards the downloads are cached.
 
 On Windows, if the Vite dev port is blocked after a reboot, see [WINDOWS-DEV.md](WINDOWS-DEV.md).
 

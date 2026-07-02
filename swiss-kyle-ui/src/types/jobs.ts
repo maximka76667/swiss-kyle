@@ -1,4 +1,4 @@
-export type Tool = 'cut-video' | 'doc-converter'
+export type Tool = 'cut-video' | 'doc-converter' | 'merge-pdfs'
 
 export type JobStatus =
   | 'Received'
