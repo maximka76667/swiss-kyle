@@ -30,7 +30,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["deb", "rpm", "appimage", "app", "dmg", "nsis"],
     "externalBin": [
       "binaries/nats-server",
       "binaries/worker",
