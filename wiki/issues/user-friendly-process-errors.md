@@ -3,9 +3,9 @@
 **Type**: issue
 **Summary**: Worker errors surface raw tool output (ffmpeg/pandoc stderr) instead of actionable guidance for the user.
 **Tags**: #ux #errors #ffmpeg #pandoc
-**Sources**: [[crates/worker/src/error.rs]], [[crates/worker/src/cut_video.rs]], [[crates/worker/src/convert_to_pdf.rs]]
+**Sources**: [[crates/worker/src/error.rs]], [[crates/worker/src/cut_video.rs]], [[crates/worker/src/convert_document.rs]]
 **Related**: [[wiki/components/worker]]
-**Last Updated**: 2026-06-28
+**Last Updated**: 2026-07-02
 
 ---
 

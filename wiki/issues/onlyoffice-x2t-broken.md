@@ -1,19 +1,19 @@
 # OnlyOffice x2t Converter Broken + Remote Word Idea
 
 **Type**: issue
-**Summary**: The OnlyOffice x2t converter crashes on all files; a remote Word-on-VPS approach was considered as an alternative for cross-platform high-fidelity conversion.
-**Tags**: #pdf #conversion #onlyoffice #word
-**Sources**: [[crates/worker/src/convert_to_pdf.rs]]
+**Summary**: Resolved by removal — the OnlyOffice x2t converter crashed on all files and has been dropped from the code and UI; a remote Word-on-VPS approach was considered but not adopted.
+**Tags**: #pdf #conversion #onlyoffice #word #resolved
+**Sources**: [[crates/worker/src/convert_document.rs]]
 **Related**: [[wiki/decisions/adr-001-local-only]], [[wiki/components/worker]]
-**Last Updated**: 2026-06-29
+**Last Updated**: 2026-07-02
 
 ---
 
 ## Overview
 
-`x2t.exe` (OnlyOffice DesktopEditors converter) crashes on every file with a JavaScript TypeError in `AscCommon.zP.decode` (font decoding), followed by `DoctRenderer:<result><error code="open" /></result>`. This happens regardless of the input file and regardless of the arguments passed. The binary likely needs to run from its own directory to locate internal scripts and font resources, but even fixing that is fragile.
+**Resolved (2026-07-02): OnlyOffice/x2t has been removed entirely** — no `x2t`/`onlyoffice` references remain in the codebase, and the UI's PDF-converter dropdown now offers only Microsoft Word and LibreOffice. This page is kept as a record of why.
 
-OnlyOffice has been left in the codebase but effectively does not work. The practical converter lineup is:
+`x2t.exe` (OnlyOffice DesktopEditors converter) crashed on every file with a JavaScript TypeError in `AscCommon.zP.decode` (font decoding), followed by `DoctRenderer:<result><error code="open" /></result>`. This happened regardless of the input file and arguments. The binary likely needed to run from its own directory to locate internal scripts and font resources, but even fixing that was fragile — so it was dropped. The practical converter lineup is:
 
 - **Windows** — Microsoft Word (COM) or LibreOffice
 - **macOS / Linux** — LibreOffice only
@@ -26,5 +26,4 @@ One considered alternative: host Microsoft Word on a Windows VPS, expose a small
 
 ## Known Issues / Tech Debt
 
-- OnlyOffice option is still shown in the UI and selectable, but will always fail.
-- Either remove it from the UI or fix the x2t invocation (try running x2t with `current_dir` set to the converter's own directory).
+- None outstanding — OnlyOffice has been removed from both the worker and the UI. The remote Word-on-VPS idea remains available if cross-platform Word-fidelity conversion is ever needed, at the cost of breaking the offline model (→ [[wiki/decisions/adr-001-local-only]]).

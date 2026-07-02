@@ -1,11 +1,11 @@
 # Job Types
 
 **Type**: component
-**Summary**: All shared message types for the NATS job pipeline: `JobEnvelope` (wire format), `Job`/`CutVideo` (job payload), and `JobStatus`/`StatusEvent` (progress events).
+**Summary**: All shared message types for the NATS job pipeline: `JobEnvelope` (wire format), `Job`/`CutVideo`/`ConvertDocument` (job payloads), and `JobStatus`/`StatusEvent` (progress events).
 **Tags**: #component #job-model #status-events
 **Sources**: [[crates/shared/src/lib.rs]]
 **Related**: [[wiki/components/publisher]], [[wiki/components/worker]], [[wiki/architecture/system-overview]]
-**Last Updated**: 2026-06-28
+**Last Updated**: 2026-07-02
 
 ---
 
@@ -37,6 +37,7 @@ Every message on the `jobs` JetStream subject is a `JobEnvelope`. The `id` trave
 ```rust
 pub enum Job {
     CutVideo(CutVideo),
+    ConvertDocument(ConvertDocument),
 }
 
 pub struct CutVideo {
@@ -45,9 +46,21 @@ pub struct CutVideo {
     pub start_secs: f64,
     pub end_secs: f64,
 }
+
+pub struct ConvertDocument {
+    pub input: String,
+    pub output_stem: String,        // filename without extension
+    pub to_format: DocFormat,
+    pub converter: Option<Converter>, // only used for office → PDF
+}
+
+pub enum DocFormat { Markdown, Docx, Html, Pdf }   // .extension() → "md" | "docx" | "html" | "pdf"
+pub enum Converter { Word, LibreOffice }            // Word = COM automation, Windows only
 ```
 
-`docs/DESIGN.md` lists future variants (`DownloadVideo`, `Transcode`, `ExtractAudio`) that don't exist in code yet.
+`ConvertDocument` covers all document conversions. `converter` is only meaningful when converting an office file (doc/docx/odt/rtf) to PDF — it selects the Word COM or LibreOffice backend; other conversions ignore it (→ [[wiki/components/worker]]).
+
+`docs/DESIGN.md` lists future video variants (`DownloadVideo`, `Transcode`, `ExtractAudio`) that don't exist in code yet.
 
 ### Status events (plain NATS subject `jobs.status`)
 
@@ -82,7 +95,7 @@ Status events use a plain NATS subject (not JetStream) because durability is not
 
 ## Known Issues / Tech Debt
 
-Only `CutVideo` exists; the enum has a single variant so `match` in the worker isn't yet exercised for branching logic.
+`CutVideo.output` is a bare filename while `ConvertDocument` uses `output_stem` + a `DocFormat` extension — the two variants name their output differently, which the worker and frontend each special-case.
 
 ## Related
 

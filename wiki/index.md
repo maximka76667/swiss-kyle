@@ -1,6 +1,6 @@
 # Wiki Index
 
-_Last updated: 2026-06-28_
+_Last updated: 2026-07-02_
 
 ## Architecture
 
@@ -8,12 +8,12 @@ _Last updated: 2026-06-28_
 
 ## Components
 
-- [[wiki/components/job-types]] — `JobEnvelope`, `Job`/`CutVideo`/`ConvertToPdf`, `JobStatus`/`StatusEvent` — all NATS message types
+- [[wiki/components/job-types]] — `JobEnvelope`, `Job`/`CutVideo`/`ConvertDocument`, `JobStatus`/`StatusEvent` — all NATS message types
 - [[wiki/components/publisher]] — Shared `Publisher` struct: connects to NATS, durably publishes jobs
-- [[wiki/components/worker]] — Pulls jobs, runs ffmpeg (cut-video) or pandoc+typst (pdf), streams progress, publishes StatusEvents
+- [[wiki/components/worker]] — Pulls jobs, runs ffmpeg (cut-video) or the document converter, streams progress, publishes StatusEvents
 - [[wiki/components/tauri-app]] — Sidecar orchestration, Tauri commands, NATS status relay
-- [[wiki/components/video-server]] — Local Axum server serving videos with HTTP range support
-- [[wiki/components/frontend]] — React/TS app: two tools (Cut Video, PDF Converter), drag-drop, router-based navigation, job history sidebar
+- [[wiki/components/video-server]] — Local Axum server streaming videos with HTTP range support, token-gated against arbitrary file access
+- [[wiki/components/frontend]] — React/TS app: two tools (Cut Video, Doc Converter), drag-drop, router-based navigation, job history sidebar
 - [[wiki/components/cli-publisher]] — Archived: CLI dev tool for job submission, replaced by Tauri app
 - [[wiki/components/http-api]] — Archived: Axum HTTP API from VPS-backend era, replaced by Tauri app
 
@@ -41,4 +41,4 @@ _(empty)_
 - [[wiki/issues/missing-db-and-progress]] — SurrealDB persistence still planned but not implemented; job history resets on restart
 - [[wiki/issues/api-rs-obsolescence]] — Resolved: Tauri app now handles job submission and status forwarding in-process
 - [[wiki/issues/user-friendly-process-errors]] — ffmpeg/pandoc errors shown as raw stderr tail; should map known patterns to plain-language guidance
-- [[wiki/issues/onlyoffice-x2t-broken]] — x2t crashes on all files (font decoder JS error); remote Word-on-VPS noted as future alternative
+- [[wiki/issues/onlyoffice-x2t-broken]] — Resolved: x2t removed from code and UI (crashed on all files); Word/LibreOffice are the converters
