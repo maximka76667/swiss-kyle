@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version tag (e.g. v0.2.0)"
+        description: "Release version, e.g. 0.2.0 (a leading 'v' is stripped)"
         required: true
         type: string
 
@@ -33,6 +33,42 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      # Single source of truth for the version: the workflow input, with any
+      # leading 'v' stripped to valid semver. Patch it into tauri.conf.json (which
+      # drives the bundle filenames) and Cargo.toml, and export it so the git tag
+      # and release title below use the exact same string — files, tag, and name
+      # all match. Runs on bash across every matrix OS (Git Bash on Windows);
+      # Node is preinstalled on GitHub runners.
+      - name: Apply release version
+        id: version
+        shell: bash
+        env:
+          RAW_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          VERSION="${RAW_VERSION#v}"
+          if [[ -z "$VERSION" ]]; then
+            echo "::error::version input is empty" >&2
+            exit 1
+          fi
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+.].*)?$ ]]; then
+            echo "::error::version '$VERSION' is not valid semver (expected e.g. 0.2.0)" >&2
+            exit 1
+          fi
+          echo "Releasing $VERSION"
+          VERSION="$VERSION" node -e '
+            const fs = require("fs");
+            const v = process.env.VERSION;
+            const conf = "src-tauri/tauri.conf.json";
+            const c = JSON.parse(fs.readFileSync(conf, "utf8"));
+            c.version = v;
+            fs.writeFileSync(conf, JSON.stringify(c, null, 2) + "\n");
+            const cargo = "src-tauri/Cargo.toml";
+            const t = fs.readFileSync(cargo, "utf8").replace(/^version = ".*"/m, `version = "${v}"`);
+            fs.writeFileSync(cargo, t);
+            console.log("Patched tauri.conf.json and Cargo.toml to " + v);
+          '
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Install Bun
         uses: oven-sh/setup-bun@v2
@@ -73,8 +109,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.event.inputs.version }}
-          releaseName: "Swiss Kyle ${{ github.event.inputs.version }}"
+          tagName: ${{ steps.version.outputs.version }}
+          releaseName: "Swiss Kyle ${{ steps.version.outputs.version }}"
           releaseBody: "See the assets below to download and install."
           releaseDraft: true
           prerelease: false
