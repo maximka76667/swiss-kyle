@@ -24,9 +24,10 @@ log = "0.4"
 tauri = { version = "2.11.3", features = ["protocol-asset"] }
 tauri-plugin-log = "2"
 shared = { version = "0.1.0", path = "../crates/shared" }
-tauri-plugin-dialog = "2.7.1"
+tauri-plugin-dialog = { version = "2.7.1", default-features = false, features = ["xdg-portal"] }
 tauri-plugin-shell = "2.3.5"
 tokio = { version = "1.52.3", features = ["net", "rt", "time"] }
 futures = "0.3.32"
 percent-encoding = "2.3.2"
 axum = "0.8.4"
+sysinfo = { version = "0.36.1", default-features = false, features = ["system"] }

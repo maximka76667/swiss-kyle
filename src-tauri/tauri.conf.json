@@ -28,17 +28,18 @@
       }
     }
   },
+  "mainBinaryName": "swiss-kyle",
   "bundle": {
     "active": true,
-    "targets": ["deb", "rpm", "appimage", "app", "dmg", "nsis"],
-    "externalBin": [
-      "binaries/nats-server",
-      "binaries/worker",
-      "binaries/ffmpeg",
-      "binaries/pandoc",
-      "binaries/typst",
-      "binaries/pdfcpu"
-    ],
+    "targets": ["deb", "appimage", "app", "dmg", "nsis"],
+    "resources": {
+      "binaries/ffmpeg-*": "bin/",
+      "binaries/pandoc-*": "bin/",
+      "binaries/typst-*": "bin/",
+      "binaries/pdfcpu-*": "bin/",
+      "binaries/nats-server-*": "bin/",
+      "binaries/worker-*": "bin/"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

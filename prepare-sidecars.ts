@@ -1,8 +1,8 @@
 import { execSync, spawnSync } from "child_process";
 import { randomBytes } from "crypto";
-import { copyFileSync, mkdirSync, readdirSync, rmSync, statSync } from "fs";
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from "fs";
 import { tmpdir } from "os";
-import { join } from "path";
+import { join, resolve } from "path";
 
 process.chdir(import.meta.dir);
 
@@ -20,14 +20,58 @@ const NATS_VERSION = "2.10.22";
 const PANDOC_VERSION = "3.6.3";
 const TYPST_VERSION = "0.15.0";
 const PDFCPU_VERSION = "0.13.0";
-// Kill stale sidecar processes that would lock binaries during rebuild
-if (isWindows) {
-  spawnSync("taskkill", ["/F", "/IM", "worker.exe", "/T"], { stdio: "ignore" });
-  spawnSync("taskkill", ["/F", "/IM", "nats-server.exe", "/T"], { stdio: "ignore" });
-} else {
-  spawnSync("pkill", ["-f", "worker"], { stdio: "ignore" });
-  spawnSync("pkill", ["-f", "nats-server"], { stdio: "ignore" });
+
+// Kill stale sidecar processes (from a previous run that didn't exit
+// cleanly) that would lock binaries during rebuild. Only kills PIDs read
+// from our own pidfile (written by the app on spawn) after verifying the
+// PID is still running one of our binaries - never guesses by process name,
+// since a name/pattern match can hit unrelated processes (e.g. `pkill -f
+// worker` matching VS Code's own renderer, which carries "worker" in a
+// --service-worker-schemes flag).
+const PID_FILE = join(BIN_DIR, ".sidecar-pids");
+
+function pidBelongsToOurBinaries(pid: number): boolean {
+  const binDir = resolve(BIN_DIR);
+  if (isWindows) {
+    const r = spawnSync(
+      "powershell",
+      ["-NoProfile", "-Command", `(Get-Process -Id ${pid} -ErrorAction SilentlyContinue).Path`],
+      { encoding: "utf8" },
+    );
+    return r.status === 0 && r.stdout.trim().startsWith(binDir);
+  }
+  const r = spawnSync("ps", ["-p", String(pid), "-o", "args="], { encoding: "utf8" });
+  return r.status === 0 && r.stdout.includes(binDir);
 }
+
+function killLeftoverSidecars(): void {
+  let lines: string[];
+  try {
+    lines = readFileSync(PID_FILE, "utf8").split("\n").map((l) => l.trim()).filter(Boolean);
+  } catch {
+    return; // no pidfile, nothing to clean up
+  }
+  for (const line of lines) {
+    const pid = Number(line);
+    if (!pid || !pidBelongsToOurBinaries(pid)) {
+      console.log(`Skipping PID ${line} — no longer verifiable as one of our sidecars`);
+      continue;
+    }
+    console.log(`Killing leftover sidecar process ${pid}`);
+    if (isWindows) {
+      spawnSync("taskkill", ["/PID", String(pid), "/F", "/T"], { stdio: "ignore" });
+    } else {
+      try {
+        process.kill(pid, "SIGTERM");
+      } catch {
+        // already gone, fine
+      }
+    }
+  }
+  rmSync(PID_FILE, { force: true });
+}
+
+killLeftoverSidecars();
 
 // --- Worker (always rebuild) ---
 execSync("cargo build -p worker", { stdio: "inherit" });
