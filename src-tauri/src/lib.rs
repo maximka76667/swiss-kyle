@@ -49,12 +49,15 @@ fn fatal(app: &tauri::AppHandle, msg: &str) -> ! {
 /// Resolves the absolute path to a bundled tool declared in `bundle.resources`
 /// (tauri.conf.json). Tauri places these under `resource_dir()/bin/` - a
 /// private, per-app directory (e.g. /usr/lib/swiss-kyle/bin on Linux) that
-/// never touches shared system paths, unlike `externalBin`/sidecars, which
-/// Tauri's .deb bundler places directly in /usr/bin and can collide with
-/// real system packages (e.g. ffmpeg). Only used for tools invoked by the
-/// `worker` process (ffmpeg, pandoc, typst, pdfcpu) - `nats-server`/`worker`
-/// are spawned directly by this app via `app.shell().sidecar()` instead,
-/// since their names don't collide with anything.
+/// never touches shared system paths, unlike Tauri's `externalBin`/sidecar
+/// mechanism, which places binaries directly in /usr/bin on .deb installs
+/// and can collide with real system packages (ffmpeg, and even nats-server
+/// on some systems). All six bundled tools use this: ffmpeg/pandoc/typst/
+/// pdfcpu are only ever resolved to a path string (invoked by the `worker`
+/// process itself, not by this app); nats-server/worker are resolved here
+/// too and spawned via `app.shell().command(path)` rather than `.sidecar()`,
+/// since `.sidecar()` requires `externalBin` registration and its next-to-
+/// exe resolution.
 fn resolve_bin(app: &tauri::AppHandle, name: &str) -> Result<String, String> {
     let resource_dir = app
         .path()

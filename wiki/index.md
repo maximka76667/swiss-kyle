@@ -1,6 +1,6 @@
 # Wiki Index
 
-_Last updated: 2026-07-02_
+_Last updated: 2026-07-03_
 
 ## Architecture
 
@@ -22,6 +22,7 @@ _Last updated: 2026-07-02_
 - [[wiki/decisions/adr-001-local-only]] — Dropped the VPS backend; everything runs on-device, no internet required
 - [[wiki/decisions/adr-002-keep-nats-for-durability]] — Kept NATS+JetStream instead of an in-process queue, for crash durability
 - [[wiki/decisions/adr-003-embedded-surrealdb]] — Embedded SurrealDB (not remote) chosen over SQLite
+- [[wiki/decisions/adr-004-private-sidecar-resources]] — Bundled tools moved from externalBin to a private resources directory, not shared /usr/bin
 
 ## Concepts
 
@@ -42,3 +43,6 @@ _(empty)_
 - [[wiki/issues/api-rs-obsolescence]] — Resolved: Tauri app now handles job submission and status forwarding in-process
 - [[wiki/issues/user-friendly-process-errors]] — ffmpeg/pandoc errors shown as raw stderr tail; should map known patterns to plain-language guidance
 - [[wiki/issues/onlyoffice-x2t-broken]] — Resolved: x2t removed from code and UI (crashed on all files); Word/LibreOffice are the converters
+- [[wiki/issues/prepare-sidecars-pkill-broad-match]] — Resolved: pkill -f worker matched VS Code's own processes on Linux, closing the editor on every dev run
+- [[wiki/issues/sidecar-path-resolution-usr-bin-collision]] — Resolved: packaged builds hung on startup + .deb install conflicts, both from externalBin's /usr/bin placement
+- [[wiki/issues/fatal-dialog-hang-linux]] — Resolved: fatal()'s error dialog hung silently on Linux (GTK event-loop timing); fixed with xdg-portal
