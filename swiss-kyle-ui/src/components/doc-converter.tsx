@@ -2,11 +2,12 @@ import { useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
-import { FolderOpen, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ToolPage } from "@/components/tool-page";
+import { OutputFolderLink } from "@/components/output-folder-link";
 import { cn } from "@/lib/utils";
 import { useFileDrop } from "@/hooks/use-file-drop";
 import type { Tool } from "@/types/jobs";
@@ -121,13 +122,7 @@ export function DocConverter({ onJobSubmitted }: Props) {
       description={
         <>
           Convert between Markdown, DOCX, HTML, and PDF. Output is saved to{" "}
-          <button
-            className="inline-flex items-center gap-1 underline decoration-dotted hover:text-foreground transition-colors"
-            onClick={() => invoke("open_output_folder", { subfolder: "convert-document" })}
-          >
-            <FolderOpen className="h-3 w-3" />
-            ~/Documents/swiss-kyle/convert-document/
-          </button>
+          <OutputFolderLink subfolder="convert-document" />
         </>
       }
     >

@@ -19,10 +19,11 @@ import { CSS } from "@dnd-kit/utilities";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
-import { ChevronDown, ChevronUp, FileText, FolderOpen, GripVertical, Upload, X } from "lucide-react";
+import { ChevronDown, ChevronUp, FileText, GripVertical, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { OutputFolderLink } from "@/components/output-folder-link";
 import { ToolPage } from "@/components/tool-page";
 import { cn } from "@/lib/utils";
 import { useFileDrop } from "@/hooks/use-file-drop";
@@ -231,7 +232,6 @@ export function MergePdfs({ onJobSubmitted }: Props) {
         outputStem: outputStem.trim(),
       });
       onJobSubmitted(id, "merge-pdfs", `${entries.length} PDFs`, `${outputStem.trim()}.pdf`);
-      setEntries([]);
     } catch (e) {
       toast.error(`Failed to submit job: ${e}`);
     }
@@ -243,13 +243,7 @@ export function MergePdfs({ onJobSubmitted }: Props) {
       description={
         <>
           Combine PDFs in the order below. Output is saved to{" "}
-          <button
-            className="inline-flex items-center gap-1 underline decoration-dotted hover:text-foreground transition-colors"
-            onClick={() => invoke("open_output_folder", { subfolder: "merge-pdfs" })}
-          >
-            <FolderOpen className="h-3 w-3" />
-            ~/Documents/swiss-kyle/merge-pdfs/
-          </button>
+          <OutputFolderLink subfolder="merge-pdfs" />
         </>
       }
     >
