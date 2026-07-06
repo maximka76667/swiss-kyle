@@ -1,5 +1,9 @@
 # Swiss Kyle
 
+<p align="center">
+  <img src="docs/images/logo.png" alt="Swiss Kyle logo" width="160">
+</p>
+
 A desktop toolbox for local media and document jobs, built with Tauri 2 and React. Everything runs on your machine — no cloud, no uploads.
 
 **Tools:**
@@ -7,6 +11,14 @@ A desktop toolbox for local media and document jobs, built with Tauri 2 and Reac
 - **Cut video** — trim clips with ffmpeg stream copy (`-c copy`), so cuts take seconds regardless of file size, with a scrubbing timeline and in-app preview.
 - **Convert documents** — Markdown/HTML/Docx conversions via pandoc, PDF output via typst, and Office formats (doc/docx/odt/rtf) to PDF via LibreOffice or Microsoft Word (Windows only).
 - **Merge PDFs** — combine PDFs in a drag-to-reorder list via [pdfcpu](https://pdfcpu.io/).
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/images/video-cut.png" alt="Cut video tool" width="30%">
+  <img src="docs/images/docs.png" alt="Convert documents tool" width="30%">
+  <img src="docs/images/merging.png" alt="Merge PDFs tool" width="30%">
+</p>
 
 ## How it works
 
