@@ -1,8 +1,4 @@
-# Swiss Kyle
-
-<p align="center">
-  <img src="docs/images/logo.png" alt="Swiss Kyle logo" width="160">
-</p>
+# <img src="docs/images/logo.png" alt="Swiss Kyle logo" width="32"> Swiss Kyle
 
 A desktop toolbox for local media and document jobs, built with Tauri 2 and React. Everything runs on your machine — no cloud, no uploads.
 
@@ -14,11 +10,11 @@ A desktop toolbox for local media and document jobs, built with Tauri 2 and Reac
 
 ## Screenshots
 
-<p align="center">
-  <img src="docs/images/video-cut.png" alt="Cut video tool" width="30%">
-  <img src="docs/images/docs.png" alt="Convert documents tool" width="30%">
-  <img src="docs/images/merging.png" alt="Merge PDFs tool" width="30%">
-</p>
+![Cut video tool](docs/images/video-cut.png)
+
+![Convert documents tool](docs/images/docs.png)
+
+![Merge PDFs tool](docs/images/merging.png)
 
 ## How it works
 
