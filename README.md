@@ -1,4 +1,4 @@
-# <img src="docs/images/logo.png" alt="Swiss Kyle logo" width="32"> Swiss Kyle
+# <img src="docs/images/logo.png" alt="Swiss Kyle logo" width="32" align="center" style="vertical-align: middle; margin-bottom: 4px;"> Swiss Kyle
 
 A desktop toolbox for local media and document jobs, built with Tauri 2 and React. Everything runs on your machine — no cloud, no uploads.
 
