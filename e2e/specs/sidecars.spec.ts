@@ -72,7 +72,10 @@ describe("sidecars", () => {
     // is no longer valid once the last window closes.
     const deadline = Date.now() + 15000;
     while (Date.now() < deadline) {
-      if (!(await isProcessRunning("nats-server")) && !(await isProcessRunning("worker"))) {
+      if (
+        !(await isProcessRunning("nats-server")) &&
+        !(await isProcessRunning("worker"))
+      ) {
         return;
       }
       await new Promise((r) => setTimeout(r, 500));

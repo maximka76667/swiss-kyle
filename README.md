@@ -35,6 +35,7 @@ src-tauri/            Tauri app shell: lifecycle, sidecar spawning, video server
 crates/shared/        Job types, NATS publisher, shared helpers
 crates/worker/        Worker binary: job consumer + ffmpeg/pandoc/typst/pdfcpu runners
 prepare-sidecars.ts   Builds the worker and downloads pinned sidecar binaries
+e2e/                  WebdriverIO + tauri-driver end-to-end tests
 wiki/                 LLM-maintained knowledge base (see CLAUDE.md)
 ```
 
@@ -57,6 +58,16 @@ On Windows, if the Vite dev port is blocked after a reboot, see [WINDOWS-DEV.md]
 cargo test -p worker
 cargo test -p app --lib
 ```
+
+**End-to-end tests** drive the real built app through [`tauri-driver`](https://github.com/tauri-apps/tauri/tree/dev/tooling/webdriver) (real WebView, real sidecars, no mocking). One-time setup: `cargo install tauri-driver`, then build the app once (`bun tauri build --debug` or run `bun tauri dev` at least once) so `target/debug/app.exe` exists. Then:
+
+```sh
+cd e2e
+bun install
+bun run test
+```
+
+Use `bun run test`, not `bun test` — bare `bun test` runs Bun's own test runner instead of WebdriverIO and fails every spec.
 
 ### Production build
 

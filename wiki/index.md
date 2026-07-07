@@ -1,6 +1,6 @@
 # Wiki Index
 
-_Last updated: 2026-07-03_
+_Last updated: 2026-07-07_
 
 ## Architecture
 
@@ -13,7 +13,8 @@ _Last updated: 2026-07-03_
 - [[wiki/components/worker]] — Pulls jobs, runs ffmpeg (cut-video) or the document converter, streams progress, publishes StatusEvents
 - [[wiki/components/tauri-app]] — Sidecar orchestration, Tauri commands, NATS status relay
 - [[wiki/components/video-server]] — Local Axum server streaming videos with HTTP range support, token-gated against arbitrary file access
-- [[wiki/components/frontend]] — React/TS app: two tools (Cut Video, Doc Converter), drag-drop, router-based navigation, job history sidebar
+- [[wiki/components/frontend]] — React/TS app: three tools (Cut Video, Doc Converter, Merge PDFs), drag-drop, router-based navigation, job history sidebar
+- [[wiki/components/e2e-tests]] — WebdriverIO + tauri-driver suite driving the real packaged app end to end; no mocking
 - [[wiki/components/cli-publisher]] — Archived: CLI dev tool for job submission, replaced by Tauri app
 - [[wiki/components/http-api]] — Archived: Axum HTTP API from VPS-backend era, replaced by Tauri app
 
@@ -46,3 +47,4 @@ _(empty)_
 - [[wiki/issues/prepare-sidecars-pkill-broad-match]] — Resolved: pkill -f worker matched VS Code's own processes on Linux, closing the editor on every dev run
 - [[wiki/issues/sidecar-path-resolution-usr-bin-collision]] — Resolved: packaged builds hung on startup + .deb install conflicts, both from externalBin's /usr/bin placement
 - [[wiki/issues/fatal-dialog-hang-linux]] — Resolved: fatal()'s error dialog hung silently on Linux (GTK event-loop timing); fixed with xdg-portal
+- [[wiki/issues/e2e-sidecar-leak-across-specs]] — Resolved: a spec that never closed its window orphaned sidecars, failing a later, unrelated spec's process check

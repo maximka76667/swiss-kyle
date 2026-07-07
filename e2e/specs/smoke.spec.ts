@@ -18,12 +18,18 @@ describe("app launches", () => {
     expect(title).toBe("ui");
   });
 
-  it("opens a native window with the expected title", async () => {
-    await browser.waitUntil(() => nativeWindowTitle() !== "", {
-      timeout: 10000,
-      timeoutMsg: "native window title never populated",
-      interval: 300,
-    });
-    expect(nativeWindowTitle()).toBe("Swiss Kyle");
-  });
+  // Native window title is only checked on Windows: reading it on Linux
+  // needs a real window manager (e.g. Xvfb + wmctrl) and would only be
+  // confirming Tauri's own cross-platform behavior, not app logic.
+  (process.platform === "win32" ? it : it.skip)(
+    "opens a native window with the expected title",
+    async () => {
+      await browser.waitUntil(() => nativeWindowTitle() !== "", {
+        timeout: 10000,
+        timeoutMsg: "native window title never populated",
+        interval: 300,
+      });
+      expect(nativeWindowTitle()).toBe("Swiss Kyle");
+    },
+  );
 });

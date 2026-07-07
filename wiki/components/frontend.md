@@ -1,11 +1,11 @@
 # Frontend
 
 **Type**: component
-**Summary**: `ui/` — React/TypeScript/Vite app embedded in the Tauri window; provides two tools (Cut Video, Doc Converter), drag-and-drop file picking, job submission, and a live job history sidebar.
+**Summary**: `ui/` — React/TypeScript/Vite app embedded in the Tauri window; provides three tools (Cut Video, Doc Converter, Merge PDFs), drag-and-drop file picking, job submission, and a live job history sidebar.
 **Tags**: #component #react #frontend #tauri
-**Sources**: [[ui/src/App.tsx]], [[ui/src/main.tsx]], [[ui/src/components/cut-video.tsx]], [[ui/src/components/doc-converter.tsx]], [[ui/src/components/tool-nav.tsx]], [[ui/src/components/tool-page.tsx]], [[ui/src/components/video-player.tsx]], [[ui/src/components/job-history.tsx]], [[ui/src/types/jobs.ts]]
-**Related**: [[wiki/components/tauri-app]], [[wiki/components/video-server]], [[wiki/components/job-types]]
-**Last Updated**: 2026-07-02
+**Sources**: [[ui/src/App.tsx]], [[ui/src/main.tsx]], [[ui/src/components/cut-video.tsx]], [[ui/src/components/doc-converter.tsx]], [[ui/src/components/merge-pdfs.tsx]], [[ui/src/components/tool-nav.tsx]], [[ui/src/components/tool-page.tsx]], [[ui/src/components/video-player.tsx]], [[ui/src/components/job-history.tsx]], [[ui/src/hooks/use-file-drop.ts]], [[ui/src/types/jobs.ts]]
+**Related**: [[wiki/components/tauri-app]], [[wiki/components/video-server]], [[wiki/components/job-types]], [[wiki/components/e2e-tests]]
+**Last Updated**: 2026-07-07
 
 ---
 
@@ -27,7 +27,8 @@ MemoryRouter
             ├── SidebarInset
             │   └── Routes
             │       ├── /cut-video     → CutVideo
-            │       └── /doc-converter → DocConverter
+            │       ├── /doc-converter → DocConverter
+            │       └── /merge-pdfs    → MergePdfs
             ├── Sidebar (right) → JobHistory
             └── FloatingSidebarTrigger
 ```
@@ -36,15 +37,24 @@ MemoryRouter
 
 Shared layout wrapper used by every tool. Renders a centered `h1` title and description paragraph slightly above the vertical midpoint, then the tool's content below. The description accepts `React.ReactNode` so tools can embed clickable elements (e.g. the output folder link).
 
-### CutVideo / DocConverter (tool components)
+### File drop (`useFileDrop`)
+
+All three tools take input files two ways: click-to-browse (native `@tauri-apps/plugin-dialog` `open()`, filtered by extension) or drag-and-drop. Drag-and-drop does **not** go through the browser's HTML5 DnD/`dataTransfer` API — Tauri intercepts OS-level file drops at the WebView layer so it can resolve real filesystem paths (browsers otherwise hide these). `useFileDrop` (`ui/src/hooks/use-file-drop.ts`) subscribes to `getCurrentWebview().onDragDropEvent(...)`, which is built on the `tauri://drag-drop`/`-enter`/`-over`/`-leave` events, and calls back with the dropped paths on a `drop` event.
+
+Each tool's own `applyFile`/`addPaths` handler — not the drop handler itself — enforces the extension allowlist and shows a `sonner` error toast on rejection (CutVideo: `VIDEO_EXTS`; DocConverter: `INPUT_EXT_TO_FORMAT` keys; MergePdfs: must end in `.pdf`, partial-accepts a batch and reports how many were skipped). Drag-and-drop and the native picker share this same validation path. Covered end-to-end by [[wiki/components/e2e-tests]] (drop events are simulated by emitting `tauri://drag-drop` directly over IPC, since there's no real OS drag to script).
+
+### CutVideo / DocConverter / MergePdfs (tool components)
 
 Each tool has:
-- A dashed drop zone (click to open native file picker, or drag-and-drop a file from the OS). File path is read from `(file as any).path` which Tauri's webview adds to `File` objects.
-- Auto-generated output name derived from the input stem (CutVideo keeps the original extension; DocConverter uses the stem plus the chosen `to_format` extension).
-- Fields and submit button hidden until a file is selected.
-- On submit: `invoke('submit_cut_job' | 'submit_doc_convert_job', ...)` returns a job ID; calls `onJobSubmitted(id, tool, input, output)`.
+- A dashed drop zone (click to open native file picker, or drag-and-drop a file from the OS).
+- Fields and submit button hidden until at least one valid file is selected.
+- On submit: `invoke('submit_cut_job' | 'submit_doc_convert_job' | 'submit_merge_pdfs_job', ...)` returns a job ID; calls `onJobSubmitted(id, tool, input, output)`.
 
-DocConverter additionally offers a **Convert to** format dropdown (the input's own format is filtered out of the choices) and, only when converting an office file (doc/docx/odt/rtf) to PDF, a **PDF converter** dropdown selecting Microsoft Word (Windows only) or LibreOffice.
+CutVideo auto-generates an output name from the input stem, keeping the original extension, and renders `VideoPlayer` with a start/end trim range once a file is loaded.
+
+DocConverter auto-generates an output stem and offers a **Convert to** format dropdown (the input's own format is filtered out of the choices) and, only when converting an office file (doc/docx/odt/rtf) to PDF, a **PDF converter** dropdown selecting Microsoft Word (Windows only) or LibreOffice.
+
+MergePdfs accepts multiple files (batched drop or multi-select picker), lists them as reorderable rows (`@dnd-kit`, drag handle + up/down buttons), fetches each file's page count via `invoke('get_pdf_page_count', ...)`, and requires at least 2 entries before Merge is enabled.
 
 ### App.tsx — state and event wiring
 
@@ -63,7 +73,7 @@ listen<JobStatusEvent>('job-status', (event) => {
 })
 ```
 
-`handleJobSubmitted(id, tool, input, output)` appends a new `TrackedJob`, using any buffered status for that id or `'Submitted'` otherwise. Each tool component passes its own tool identifier (`'cut-video'` or `'doc-converter'`).
+`handleJobSubmitted(id, tool, input, output)` appends a new `TrackedJob`, using any buffered status for that id or `'Submitted'` otherwise. Each tool component passes its own tool identifier (`'cut-video'`, `'doc-converter'`, or `'merge-pdfs'`).
 
 ### JobHistory
 
@@ -73,6 +83,7 @@ Right sidebar (offcanvas). Each job row shows: tool icon, output filename, sourc
 
 - Cut Video: `~/Documents/swiss-kyle/cut-video/`
 - Doc Converter: `~/Documents/swiss-kyle/convert-document/`
+- Merge PDFs: `~/Documents/swiss-kyle/merge-pdfs/`
 
 Both paths are clickable in the tool description (`invoke('open_output_folder', { subfolder: '...' })`).
 
@@ -83,7 +94,7 @@ Both paths are clickable in the tool description (`invoke('open_output_folder', 
 ### Type definitions (`types/jobs.ts`)
 
 ```ts
-export type Tool = 'cut-video' | 'doc-converter'
+export type Tool = 'cut-video' | 'doc-converter' | 'merge-pdfs'
 export type JobStatus = 'Received' | { Processing: { percent: number } } | 'Done' | { Failed: { reason: string } }
 export type TrackedJobStatus = JobStatus | 'Submitted'
 export type TrackedJob = { id: string; tool: Tool; input: string; output: string; status: TrackedJobStatus; submittedAt: Date }
@@ -98,9 +109,10 @@ All job state is in-memory React state. This is intentional for now and tracked 
 ## Known Issues / Tech Debt
 
 - Job history resets on app restart — no persistence layer yet (→ [[wiki/issues/missing-db-and-progress]]).
-- Drag-and-drop has no file extension validation — the drop handler accepts any file, bypassing the extension filter enforced by the native file picker dialog.
 - PDF conversion has no progress — goes straight from `Received` to `Done`/`Failed` with no intermediate `Processing` state (pandoc does not expose progress).
+
+Corrected stale claim (2026-07-07): an earlier version of this page said drag-and-drop had no extension validation. That was wrong even at the time — each tool's `applyFile`/`addPaths` handler validates the extension on drop, same as the picker. Now verified by [[wiki/components/e2e-tests]] (`cut-video.spec.ts`, `doc-converter.spec.ts`, `merge-pdfs.spec.ts` each assert the rejection toast on an unsupported drop).
 
 ## Related
 
-[[wiki/components/tauri-app]], [[wiki/components/video-server]], [[wiki/components/job-types]]
+[[wiki/components/tauri-app]], [[wiki/components/video-server]], [[wiki/components/job-types]], [[wiki/components/e2e-tests]]
