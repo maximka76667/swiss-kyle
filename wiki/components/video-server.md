@@ -3,7 +3,7 @@
 **Type**: component
 **Summary**: `src-tauri/src/video_server.rs` — a local Axum HTTP server that streams video files to the frontend's `<video>` element with HTTP range support, gated by an unguessable per-file token so it cannot serve arbitrary paths on disk.
 **Tags**: #component #tauri #video #axum #range-request #security
-**Sources**: [[src-tauri/src/video_server.rs]], [[src-tauri/src/lib.rs]], [[swiss-kyle-ui/src/components/video-player.tsx]]
+**Sources**: [[src-tauri/src/video_server.rs]], [[src-tauri/src/lib.rs]], [[ui/src/components/video-player.tsx]]
 **Related**: [[wiki/components/tauri-app]], [[wiki/components/frontend]]
 **Last Updated**: 2026-07-02
 

@@ -30,7 +30,7 @@ Video preview is served by a localhost HTTP server that only streams files regis
 ## Repo layout
 
 ```
-swiss-kyle-ui/        React + Vite frontend (bun)
+ui/                   React + Vite frontend (bun)
 src-tauri/            Tauri app shell: lifecycle, sidecar spawning, video server, commands
 crates/shared/        Job types, NATS publisher, shared helpers
 crates/worker/        Worker binary: job consumer + ffmpeg/pandoc/typst/pdfcpu runners

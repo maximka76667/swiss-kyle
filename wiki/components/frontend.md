@@ -1,9 +1,9 @@
 # Frontend
 
 **Type**: component
-**Summary**: `swiss-kyle-ui/` — React/TypeScript/Vite app embedded in the Tauri window; provides two tools (Cut Video, Doc Converter), drag-and-drop file picking, job submission, and a live job history sidebar.
+**Summary**: `ui/` — React/TypeScript/Vite app embedded in the Tauri window; provides two tools (Cut Video, Doc Converter), drag-and-drop file picking, job submission, and a live job history sidebar.
 **Tags**: #component #react #frontend #tauri
-**Sources**: [[swiss-kyle-ui/src/App.tsx]], [[swiss-kyle-ui/src/main.tsx]], [[swiss-kyle-ui/src/components/cut-video.tsx]], [[swiss-kyle-ui/src/components/doc-converter.tsx]], [[swiss-kyle-ui/src/components/tool-nav.tsx]], [[swiss-kyle-ui/src/components/tool-page.tsx]], [[swiss-kyle-ui/src/components/video-player.tsx]], [[swiss-kyle-ui/src/components/job-history.tsx]], [[swiss-kyle-ui/src/types/jobs.ts]]
+**Sources**: [[ui/src/App.tsx]], [[ui/src/main.tsx]], [[ui/src/components/cut-video.tsx]], [[ui/src/components/doc-converter.tsx]], [[ui/src/components/tool-nav.tsx]], [[ui/src/components/tool-page.tsx]], [[ui/src/components/video-player.tsx]], [[ui/src/components/job-history.tsx]], [[ui/src/types/jobs.ts]]
 **Related**: [[wiki/components/tauri-app]], [[wiki/components/video-server]], [[wiki/components/job-types]]
 **Last Updated**: 2026-07-02
 
