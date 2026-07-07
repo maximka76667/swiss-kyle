@@ -55,19 +55,19 @@ On Windows, if the Vite dev port is blocked after a reboot, see [WINDOWS-DEV.md]
 ### Tests
 
 ```sh
-cargo test -p worker
-cargo test -p app --lib
+bun run test:unit
 ```
 
-**End-to-end tests** drive the real built app through [`tauri-driver`](https://github.com/tauri-apps/tauri/tree/dev/tooling/webdriver) (real WebView, real sidecars, no mocking). One-time setup: `cargo install tauri-driver`, then build the app once (`bun tauri build --debug` or run `bun tauri dev` at least once) so `target/debug/app.exe` exists. Then:
+(equivalent to plain `cargo test`, run from the repo root)
+
+**End-to-end tests** drive the real built app through [`tauri-driver`](https://github.com/tauri-apps/tauri/tree/dev/tooling/webdriver) (real WebView, real sidecars, no mocking). One-time setup: `cargo install tauri-driver`. Job output during e2e runs (and any debug build) is redirected to `.development/` instead of your real Documents folder — see `.env.development`. Then, from the repo root:
 
 ```sh
-cd e2e
 bun install
-bun run test
+bun run test:e2e
 ```
 
-Use `bun run test`, not `bun test` — bare `bun test` runs Bun's own test runner instead of WebdriverIO and fails every spec.
+`test:e2e` rebuilds the worker sidecar and `app.exe` itself before running the suite, so it always tests current code — no separate build step needed.
 
 ### Production build
 

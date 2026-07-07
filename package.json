@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "test:unit": "cargo test",
+    "test:e2e": "bun --cwd=e2e run test"
+  },
   "dependencies": {},
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.3",

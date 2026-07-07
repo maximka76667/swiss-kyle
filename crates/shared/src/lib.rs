@@ -6,10 +6,41 @@ pub fn new_id() -> String {
     ulid::Ulid::new().to_string()
 }
 
+/// In debug builds, overridable via `.env.development` at the repo root (keeps
+/// dev/test job output out of the user's real Documents folder). Never
+/// active in release builds.
 pub fn base_output_dir() -> PathBuf {
+    if cfg!(debug_assertions) {
+        if let Some(dir) = dev_output_dir_override() {
+            return dir;
+        }
+    }
     dirs::document_dir()
         .unwrap_or_else(|| dirs::home_dir().expect("no home dir").join("Documents"))
         .join("swiss-kyle")
+}
+
+/// Reads `SWISS_KYLE_OUTPUT_DIR=<name>` from `.env.development` at the repo
+/// root. The app and worker are separate processes that don't reliably
+/// share environment variables (tauri-driver, used by e2e tests, doesn't
+/// forward its own env down to the app it launches), so this reads a real
+/// file instead — anchored via `CARGO_MANIFEST_DIR` (baked in at compile
+/// time), not the process's CWD, so it resolves identically regardless of
+/// how or from where each process was launched.
+///
+/// The result always lands under `<repo root>/.development/` (gitignored
+/// wholesale) regardless of what's written in the file — only the value's
+/// base name is used, so a stray absolute path or `..` in `.env.development`
+/// can't escape it.
+fn dev_output_dir_override() -> Option<PathBuf> {
+    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let contents = std::fs::read_to_string(repo_root.join(".env.development")).ok()?;
+    let value = contents
+        .lines()
+        .find_map(|l| l.strip_prefix("SWISS_KYLE_OUTPUT_DIR="))?
+        .trim();
+    let name = std::path::Path::new(value).file_name()?;
+    Some(repo_root.join(".development").join(name))
 }
 
 pub fn output_dir(tool: &str) -> PathBuf {

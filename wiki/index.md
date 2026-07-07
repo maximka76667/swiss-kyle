@@ -1,6 +1,6 @@
 # Wiki Index
 
-_Last updated: 2026-07-07_
+_Last updated: 2026-07-08_
 
 ## Architecture
 
@@ -48,3 +48,5 @@ _(empty)_
 - [[wiki/issues/sidecar-path-resolution-usr-bin-collision]] — Resolved: packaged builds hung on startup + .deb install conflicts, both from externalBin's /usr/bin placement
 - [[wiki/issues/fatal-dialog-hang-linux]] — Resolved: fatal()'s error dialog hung silently on Linux (GTK event-loop timing); fixed with xdg-portal
 - [[wiki/issues/e2e-sidecar-leak-across-specs]] — Resolved: a spec that never closed its window orphaned sidecars, failing a later, unrelated spec's process check
+- [[wiki/issues/tauri-resource-copy-only-on-app-rebuild]] — Resolved: rebuilding the worker alone doesn't refresh what the running app spawns; only rebuilding `app.exe` does
+- [[wiki/issues/webview2-session-crash-on-fast-relaunch]] — Resolved (mitigated): a new WebView2 session launched too soon after the last one closed crashed within ~1.5s; fixed with an empirically-tuned 4s delay

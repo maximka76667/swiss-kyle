@@ -3,9 +3,9 @@
 **Type**: component
 **Summary**: `e2e/` — WebdriverIO + `tauri-driver` suite that drives the real, packaged Tauri app (real WebView2, real sidecars) end to end; no mocking layer.
 **Tags**: #component #testing #e2e #webdriverio #tauri
-**Sources**: [[e2e/wdio.conf.ts]], [[e2e/specs/smoke.spec.ts]], [[e2e/specs/sidecars.spec.ts]], [[e2e/specs/cut-video.spec.ts]], [[e2e/specs/doc-converter.spec.ts]], [[e2e/specs/merge-pdfs.spec.ts]], [[e2e/support/selectors.ts]], [[e2e/support/drag-drop.ts]], [[e2e/support/navigate.ts]], [[src-tauri/capabilities/default.json]]
-**Related**: [[wiki/components/frontend]], [[wiki/components/tauri-app]], [[wiki/issues/e2e-sidecar-leak-across-specs]]
-**Last Updated**: 2026-07-07
+**Sources**: [[e2e/wdio.conf.ts]], [[e2e/package.json]], [[e2e/specs/smoke.spec.ts]], [[e2e/specs/sidecars.spec.ts]], [[e2e/specs/cut-video.spec.ts]], [[e2e/specs/doc-converter.spec.ts]], [[e2e/specs/merge-pdfs.spec.ts]], [[e2e/support/selectors.ts]], [[e2e/support/drag-drop.ts]], [[e2e/support/navigate.ts]], [[src-tauri/capabilities/default.json]], [[crates/shared/src/lib.rs]], [[.env.development]]
+**Related**: [[wiki/components/frontend]], [[wiki/components/tauri-app]], [[wiki/issues/e2e-sidecar-leak-across-specs]], [[wiki/issues/tauri-resource-copy-only-on-app-rebuild]], [[wiki/issues/webview2-session-crash-on-fast-relaunch]]
+**Last Updated**: 2026-07-08
 
 ---
 
@@ -13,7 +13,7 @@
 
 `e2e/` is a separate Bun/TypeScript package (its own `package.json`, not part of the `ui/`/`src-tauri/`/`crates/` workspace) that runs WebdriverIO against the app through [`tauri-driver`](https://github.com/tauri-apps/tauri/tree/dev/tooling/webdriver) — a WebDriver-protocol bridge that launches the built `app.exe`/binary and forwards commands to its WebView (Edge WebView2 on Windows, `webkit2gtk-driver` on Linux). Nothing is mocked: sidecars really spawn, NATS really runs, the window is a real OS window.
 
-Run with `bun run test` from `e2e/` (or the equivalent from the repo root — see the README). This invokes `wdio run ./wdio.conf.ts`, **not** `bun test` — bare `bun test` invokes Bun's own test runner instead, which doesn't provide the `browser`/`expect` WDIO globals and fails every spec with `ReferenceError: browser is not defined`.
+Run with `bun run test:e2e` from the repo root (`package.json`'s `test:e2e` script is `bun --cwd=e2e run test`), or `bun run test` directly from `e2e/` (see the README). The `test` script (`e2e/package.json`) is fully self-sufficient: it runs `prepare-sidecars.ts` (rebuilds the `worker` sidecar), then `cargo build --manifest-path ../src-tauri/Cargo.toml` (rebuilds `app.exe`), then `wdio run ./wdio.conf.ts` — in that order, for a reason that isn't obvious (→ [[wiki/issues/tauri-resource-copy-only-on-app-rebuild]]). Use `bun run test`, **not** `bun test` — bare `bun test` invokes Bun's own test runner instead, which doesn't provide the `browser`/`expect` WDIO globals and fails every spec with `ReferenceError: browser is not defined`.
 
 ## Details
 
@@ -47,9 +47,15 @@ This is also why `src-tauri/capabilities/default.json` grants `core:window:allow
 |---|---|
 | `smoke.spec.ts` | App launches: webview document title populates; native OS window title matches (Windows only — skipped elsewhere, reading it needs a real window manager) |
 | `sidecars.spec.ts` | `nats-server`/`worker` processes spawn and accept connections; closing the window kills them (→ [[wiki/components/tauri-app]] shutdown sequence) |
-| `cut-video.spec.ts` | Accepts a dropped video (`fixtures/sample.mp4`); rejects an unsupported extension (`fixtures/unsupported.txt`) with a toast |
+| `cut-video.spec.ts` | Accepts a dropped video (`fixtures/sample.mp4`); rejects an unsupported extension (`fixtures/unsupported.txt`) with a toast; submits a real cut job and waits for "Done" in job history (happy path — real ffmpeg run) |
 | `doc-converter.spec.ts` | Rejects an unsupported extension with a toast |
 | `merge-pdfs.spec.ts` | Rejects a non-PDF drop with a toast |
+
+### Output redirection (`.env.development`)
+
+Job output (e.g. a cut video, a merged PDF) would otherwise land in the user's real `~/Documents/swiss-kyle/` (→ [[wiki/components/tauri-app]]) — undesirable for a test run, or even a normal debug session. `base_output_dir()` (`crates/shared/src/lib.rs`) checks for a checked-in `.env.development` at the repo root and, if present, redirects output under `<repo root>/.development/` instead — **in any debug build**, not just e2e runs (gated by `cfg!(debug_assertions)`, so it's compiled out entirely in release). Only the configured value's base name is used (via `Path::file_name()`), so the file can't specify a path that escapes `.development/` — which is gitignored wholesale, so the redirected value never needs mirroring in `.gitignore`.
+
+This reads a real file rather than an environment variable because `tauri-driver` doesn't reliably forward its own environment down to the `app.exe` it launches — confirmed empirically (an env var set on the `tauri-driver` spawn never reached the worker's output path). The file is located via `env!("CARGO_MANIFEST_DIR")` (a compile-time constant), not the process's CWD, so `app.exe` and the separately-launched `worker.exe` resolve the same path independently of how or from where either was started.
 
 ### Fixtures (`e2e/fixtures/`)
 
@@ -64,9 +70,10 @@ The native OS "Open File" dialog (`@tauri-apps/plugin-dialog`) is *not* covered 
 ## Known Issues / Tech Debt
 
 - Resolved: sidecar processes from one spec file leaked into the next's process checks (→ [[wiki/issues/e2e-sidecar-leak-across-specs]]).
-- Occasional transient `WebDriverError`/`no such window` failures have been observed on `sidecars.spec.ts` when run as part of the full 5-spec suite (not reproducible when run alone or with fewer specs) — suspected WebView2/`tauri-driver` session-handoff flakiness under back-to-back session churn, not yet root-caused. Reruns have consistently passed.
+- Resolved: the worker sidecar silently ran stale code because `prepare-sidecars.ts` rebuilding it doesn't refresh the copy the running app actually spawns (→ [[wiki/issues/tauri-resource-copy-only-on-app-rebuild]]).
+- Resolved (mitigated): a fresh session launched too soon after the previous one's close crashed the new `app.exe` within ~1.5s of starting, roughly 1-in-2 full-suite runs (→ [[wiki/issues/webview2-session-crash-on-fast-relaunch]]). Fixed with an empirically binary-searched 4s delay in the `after` hook (0/20 failures at 4s vs ~4% still failing at 3.5s). The precise WebView2-internal resource behind it wasn't identified — the delay is an empirical margin, not a wait on known state.
 - Linux driving (`webkit2gtk-driver`) is untested — the harness assumes `tauri-driver` resolves the right platform driver, but only Windows/WebView2 has actually been run.
 
 ## Related
 
-[[wiki/components/frontend]], [[wiki/components/tauri-app]], [[wiki/issues/e2e-sidecar-leak-across-specs]]
+[[wiki/components/frontend]], [[wiki/components/tauri-app]], [[wiki/issues/e2e-sidecar-leak-across-specs]], [[wiki/issues/tauri-resource-copy-only-on-app-rebuild]], [[wiki/issues/webview2-session-crash-on-fast-relaunch]]
