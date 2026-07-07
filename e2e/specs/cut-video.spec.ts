@@ -26,4 +26,17 @@ describe("cut video", () => {
     const errorToast = await byText("Not a supported video file");
     await errorToast.waitForDisplayed({ timeout: 5000 });
   });
+
+  it("processes a submitted cut job to completion", async () => {
+    // sample.mp4 is 3s long; cut a 1s range so ffmpeg has real work to do.
+    const endSecs = await $("#end-secs");
+    await endSecs.setValue("1");
+
+    const submitButton = await byText("Submit job");
+    await submitButton.click();
+
+    // Job history sidebar is open by default (SidebarProvider's defaultOpen).
+    const doneBadge = await byText("Done");
+    await doneBadge.waitForDisplayed({ timeout: 20000 });
+  });
 });

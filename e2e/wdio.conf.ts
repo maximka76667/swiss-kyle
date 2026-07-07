@@ -5,6 +5,9 @@ import { resolve } from "node:path";
 let viteProcess: ChildProcess | undefined;
 let tauriDriverProcess: ChildProcess | undefined;
 
+// Empirically tuned via binary search — see wiki/issues/webview2-session-crash-on-fast-relaunch.
+const SESSION_TEARDOWN_DELAY_MS = 4000;
+
 function waitForPort(
   port: number,
   host = "127.0.0.1",
@@ -81,6 +84,16 @@ export const config: WebdriverIO.Config = {
     } catch (e) {
       console.log(`[after hook] window already closed, skipping: ${e}`);
     }
+
+    // Launching a fresh session too soon after this one crashes the next
+    // app.exe almost immediately (~1.5s after launch, well before its own
+    // sidecars finish starting) — see wiki/issues/webview2-session-crash-on-fast-relaunch
+    // for how this was diagnosed. Not based on any observable condition (the
+    // app process itself disappears from the OS process list almost
+    // instantly regardless, well before whatever WebView2-internal resource
+    // is actually still settling), so this is a plain empirically-tuned
+    // delay, not a wait on real state.
+    await new Promise((r) => setTimeout(r, SESSION_TEARDOWN_DELAY_MS));
   },
   onComplete: () => {
     for (const proc of [viteProcess, tauriDriverProcess]) {
