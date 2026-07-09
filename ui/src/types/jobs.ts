@@ -21,3 +21,24 @@ export type TrackedJob = {
   status: TrackedJobStatus
   submittedAt: Date
 }
+
+export type LogLevel = 'Info' | 'Warn' | 'Error'
+
+export type LogEntry = {
+  job_id: string
+  job_type: string
+  level: LogLevel
+  message: string
+  timestamp: string
+}
+
+export type WorkerState =
+  | 'Idle'
+  | { Busy: { job_id: string } }
+  | { Error: { reason: string } }
+
+export type WorkerHeartbeat = {
+  worker_id: number
+  state: WorkerState
+  timestamp: string
+}

@@ -1,5 +1,6 @@
 use crate::error::process_error;
-use shared::{ConvertDocument, Converter, DocFormat, output_dir};
+use crate::job::log;
+use shared::{ConvertDocument, Converter, DocFormat, LogLevel, output_dir};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -9,6 +10,7 @@ pub fn run(
     job_id: &str,
     pandoc_bin: &str,
     typst_bin: &str,
+    log_client: &async_nats::Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let ext = job.to_format.extension();
     let output_filename = format!("{}.{}", job.output_stem, ext);
@@ -27,7 +29,7 @@ pub fn run(
     let work_output = work_dir.join(&output_filename);
     let final_output = output_root.join(&output_filename);
 
-    let result = convert(&job, &work_output, &work_dir, pandoc_bin, typst_bin);
+    let result = convert(&job, &work_output, &work_dir, pandoc_bin, typst_bin, job_id, log_client);
 
     match &result {
         Ok(()) => {
@@ -49,6 +51,8 @@ fn convert(
     work_dir: &PathBuf,
     pandoc_bin: &str,
     typst_bin: &str,
+    job_id: &str,
+    log_client: &async_nats::Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let input_ext = Path::new(&job.input)
         .extension()
@@ -62,11 +66,18 @@ fn convert(
         (DocFormat::Pdf, true) => {
             let converter = job.converter.clone().unwrap_or(Converter::LibreOffice);
             match converter {
-                Converter::Word => convert_word(&job.input, output_path),
-                Converter::LibreOffice => convert_libreoffice(&job.input, output_path),
+                Converter::Word => {
+                    log(log_client, job_id, "convert-document", LogLevel::Info, "using Word COM converter".to_string());
+                    convert_word(&job.input, output_path)
+                }
+                Converter::LibreOffice => {
+                    log(log_client, job_id, "convert-document", LogLevel::Info, "using LibreOffice converter".to_string());
+                    convert_libreoffice(&job.input, output_path)
+                }
             }
         }
         (DocFormat::Pdf, false) => {
+            log(log_client, job_id, "convert-document", LogLevel::Info, "using pandoc+typst converter".to_string());
             convert_pandoc_typst(&job.input, output_path, work_dir, pandoc_bin, typst_bin)
         }
         _ => convert_pandoc(&job.input, output_path, &job.to_format, pandoc_bin),

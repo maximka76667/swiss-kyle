@@ -5,7 +5,7 @@
 **Tags**: #architecture #nats #tauri #local-first
 **Sources**: [[docs/DESIGN.md]]
 **Related**: [[wiki/components/job-types]], [[wiki/components/worker]], [[wiki/components/publisher]], [[wiki/components/tauri-app]], [[wiki/decisions/adr-001-local-only]], [[wiki/decisions/adr-002-keep-nats-for-durability]], [[wiki/decisions/adr-003-embedded-surrealdb]], [[wiki/decisions/adr-004-private-sidecar-resources]]
-**Last Updated**: 2026-07-03
+**Last Updated**: 2026-07-09
 
 ---
 
@@ -28,7 +28,7 @@ flowchart LR
     W2 -->|ConvertDocument| DC2[pandoc+typst / Word COM / LibreOffice]
     W1 -.->|StatusEvent on jobs.status| NATS
     NATS -.->|job-status Tauri event| UI
-    W1 -.->|planned| DB[(SurrealDB)]
+    W1 -.->|planned: diagnostic log| DB[(SurrealDB)]
 ```
 
 Current implementation status:
@@ -37,7 +37,7 @@ Current implementation status:
 - `Publisher` (→ [[wiki/components/publisher]]) connects to NATS and publishes `JobEnvelope` messages to the `JOBS` JetStream stream with durable acks.
 - The worker (→ [[wiki/components/worker]]) handles two job types: `CutVideo` (ffmpeg) and `ConvertDocument` (pandoc+typst for most formats, Word COM or LibreOffice for office → PDF). It streams progress for video jobs and publishes `StatusEvent` updates throughout the job lifecycle.
 - Output is written to `~/Documents/swiss-kyle/<tool>/` — `cut-video/` or `convert-document/`.
-- SurrealDB is planned for job persistence (→ [[wiki/decisions/adr-003-embedded-surrealdb]]) but not yet implemented (→ [[wiki/issues/missing-db-and-progress]]).
+- SurrealDB is planned, but scoped to a write-only per-job diagnostic log (not job-status persistence — that was decided against, job history stays disposable/in-memory), not yet implemented (→ [[wiki/decisions/adr-003-embedded-surrealdb]], [[wiki/issues/missing-db-and-progress]]).
 - `cli-publisher` and the Axum HTTP API (`api.rs`) were earlier dev tools, now removed (→ [[wiki/components/cli-publisher]], [[wiki/components/http-api]]).
 
 ## Decisions & Rationale
@@ -46,7 +46,7 @@ See the linked ADRs: keeping NATS+JetStream for its durability guarantee (→ [[
 
 ## Known Issues / Tech Debt
 
-- No DB wiring — job history resets on app restart (→ [[wiki/issues/missing-db-and-progress]]).
+- No diagnostic log wiring yet (planned SurrealDB scope, → [[wiki/decisions/adr-003-embedded-surrealdb]]). Job history resetting on app restart is intentional, not tech debt (→ [[wiki/issues/missing-db-and-progress]]).
 - Process errors shown as raw stderr tail rather than plain-language guidance (→ [[wiki/issues/user-friendly-process-errors]]).
 
 ## Related

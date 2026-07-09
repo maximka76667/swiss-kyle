@@ -1,6 +1,6 @@
 # Wiki Index
 
-_Last updated: 2026-07-08_
+_Last updated: 2026-07-09_
 
 ## Architecture
 
@@ -22,7 +22,7 @@ _Last updated: 2026-07-08_
 
 - [[wiki/decisions/adr-001-local-only]] — Dropped the VPS backend; everything runs on-device, no internet required
 - [[wiki/decisions/adr-002-keep-nats-for-durability]] — Kept NATS+JetStream instead of an in-process queue, for crash durability
-- [[wiki/decisions/adr-003-embedded-surrealdb]] — Embedded SurrealDB (not remote) chosen over SQLite
+- [[wiki/decisions/adr-003-embedded-surrealdb]] — Embedded SurrealDB kept, rescoped to a write-only per-job diagnostic log (not job-status persistence)
 - [[wiki/decisions/adr-004-private-sidecar-resources]] — Bundled tools moved from externalBin to a private resources directory, not shared /usr/bin
 
 ## Concepts
@@ -40,7 +40,7 @@ _(empty)_
 
 ## Issues
 
-- [[wiki/issues/missing-db-and-progress]] — SurrealDB persistence still planned but not implemented; job history resets on restart
+- [[wiki/issues/missing-db-and-progress]] — Resolved as won't-do: full job-status persistence dropped, history stays disposable; narrower diagnostic-log successor tracked in adr-003
 - [[wiki/issues/api-rs-obsolescence]] — Resolved: Tauri app now handles job submission and status forwarding in-process
 - [[wiki/issues/user-friendly-process-errors]] — ffmpeg/pandoc errors shown as raw stderr tail; should map known patterns to plain-language guidance
 - [[wiki/issues/onlyoffice-x2t-broken]] — Resolved: x2t removed from code and UI (crashed on all files); Word/LibreOffice are the converters

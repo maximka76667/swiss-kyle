@@ -1,8 +1,17 @@
+use crate::job_log::JobLog;
 use crate::{PdfcpuBin, VideoServer};
 use shared::{
-    base_output_dir, Converter, ConvertDocument, CutVideo, DocFormat, Job, JobEnvelope, MergePdfs,
-    Publisher,
+    base_output_dir, Converter, ConvertDocument, CutVideo, DocFormat, Job, JobEnvelope, LogEntry,
+    MergePdfs, Publisher,
 };
+
+/// Recent diagnostic job-log entries, newest first. Read-only view onto the
+/// embedded SurrealDB log (→ wiki/decisions/adr-003-embedded-surrealdb.md) —
+/// job history/status itself is not persisted, only this best-effort log.
+#[tauri::command]
+pub(crate) async fn get_job_logs(job_log: tauri::State<'_, JobLog>) -> Result<Vec<LogEntry>, String> {
+    job_log.recent_logs().await.map_err(|e| e.to_string())
+}
 
 /// Registers `path` with the video server and returns a URL that streams it.
 /// The URL carries an unguessable token, not the path, so the server never

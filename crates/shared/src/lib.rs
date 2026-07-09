@@ -66,6 +66,16 @@ pub enum Job {
     MergePdfs(MergePdfs),
 }
 
+impl Job {
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            Job::CutVideo(_) => "cut-video",
+            Job::ConvertDocument(_) => "convert-document",
+            Job::MergePdfs(_) => "merge-pdfs",
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CutVideo {
     pub input: String,
@@ -138,6 +148,71 @@ pub async fn publish_status(
 ) -> Result<(), async_nats::Error> {
     let payload = serde_json::to_vec(event)?;
     client.publish(STATUS_SUBJECT, payload.into()).await?;
+    Ok(())
+}
+
+/// Diagnostic job log — best-effort, not job-critical. Published over core
+/// NATS (not JetStream) alongside `StatusEvent`, so a backed-up subscriber
+/// can never delay job submission/processing, only drop log entries.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum LogLevel {
+    Info,
+    Warn,
+    Error,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LogEntry {
+    pub job_id: String,
+    pub job_type: String,
+    pub level: LogLevel,
+    pub message: String,
+    #[serde(with = "time::serde::rfc3339")]
+    pub timestamp: time::OffsetDateTime,
+}
+
+pub const LOG_SUBJECT: &str = "jobs.log";
+
+pub async fn publish_log(
+    client: &async_nats::Client,
+    entry: &LogEntry,
+) -> Result<(), async_nats::Error> {
+    let payload = serde_json::to_vec(entry)?;
+    client.publish(LOG_SUBJECT, payload.into()).await?;
+    Ok(())
+}
+
+/// Worker liveness/status, published on an interval independent of any
+/// single job. Unrelated to JetStream's ack-progress heartbeat (which only
+/// resets a message's redelivery timer) — this is for UI display.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum WorkerState {
+    Idle,
+    Busy { job_id: String },
+    /// Alive (still sending heartbeats) but its JetStream fetch loop is
+    /// erroring — e.g. can't reach NATS. Distinct from "offline", which the
+    /// UI infers client-side from a heartbeat that stopped arriving at all.
+    Error { reason: String },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkerHeartbeat {
+    pub worker_id: usize,
+    pub state: WorkerState,
+    #[serde(with = "time::serde::rfc3339")]
+    pub timestamp: time::OffsetDateTime,
+}
+
+pub const WORKERS_HEARTBEAT_SUBJECT: &str = "workers.heartbeat";
+
+pub async fn publish_heartbeat(
+    client: &async_nats::Client,
+    heartbeat: &WorkerHeartbeat,
+) -> Result<(), async_nats::Error> {
+    let payload = serde_json::to_vec(heartbeat)?;
+    client
+        .publish(WORKERS_HEARTBEAT_SUBJECT, payload.into())
+        .await?;
     Ok(())
 }
 

@@ -79,7 +79,7 @@ Ack timing uses short `ack_wait` plus progress heartbeats rather than one long `
 
 ## Known Issues / Tech Debt
 
-- No SurrealDB writes — job lifecycle exists in NATS events only (→ [[wiki/issues/missing-db-and-progress]]).
+- No SurrealDB diagnostic-log writes yet — job lifecycle exists in NATS events only, and always will (job-status persistence was decided against; SurrealDB's surviving scope is a write-only diagnostic log, not yet implemented) (→ [[wiki/decisions/adr-003-embedded-surrealdb]], [[wiki/issues/missing-db-and-progress]]).
 - Process error messages show raw stderr tail rather than user-friendly guidance (→ [[wiki/issues/user-friendly-process-errors]]).
 - A job that fails cleanly (non-zero exit) is still acked, so it is not retried. Redelivery (`max_deliver`) only covers workers that *crash* mid-job. Clean failures are terminal by design.
 

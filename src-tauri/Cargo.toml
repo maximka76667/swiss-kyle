@@ -31,3 +31,6 @@ futures = "0.3.32"
 percent-encoding = "2.3.2"
 axum = "0.8.4"
 sysinfo = { version = "0.36.1", default-features = false, features = ["system"] }
+surrealdb = { version = "3.2.0", features = ["kv-surrealkv"] }
+async-nats = "0.49.1"
+time = { version = "=0.3.36", features = ["formatting", "parsing"] }

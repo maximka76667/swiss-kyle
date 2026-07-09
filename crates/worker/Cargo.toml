@@ -13,4 +13,5 @@ dirs = "6.0.0"
 futures = "0.3.32"
 serde_json = "1.0.150"
 shared = { version = "0.1.0", path = "../shared" }
+time = { version = "=0.3.36", features = ["serde-well-known"] }
 tokio = { version = "1.52.3", features = ["full"] }

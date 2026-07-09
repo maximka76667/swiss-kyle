@@ -1,4 +1,5 @@
 mod commands;
+mod job_log;
 mod video_server;
 
 use futures::StreamExt;
@@ -9,6 +10,7 @@ use tauri::{Emitter, Manager};
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
+use job_log::JobLog;
 use video_server::Registry;
 
 struct VideoServer {
@@ -251,6 +253,19 @@ pub fn run() {
                 }
             });
 
+            let app_data_dir = app
+                .path()
+                .app_data_dir()
+                .unwrap_or_else(|e| fatal(app.handle(), &format!("Could not resolve the app data directory: {}", e)));
+            let job_log = tauri::async_runtime::block_on(JobLog::connect(&app_data_dir))
+                .unwrap_or_else(|e| {
+                    fatal(app.handle(), &format!("Failed to open the diagnostics database: {}", e))
+                });
+            app.manage(job_log.clone());
+            let log_client = app.state::<Publisher>().client().clone();
+            let log_app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(job_log::subscribe(log_app_handle, log_client, job_log));
+
             // Jobs are I/O-bound (ffmpeg -c copy) or serialized externally
             // (Word COM, LibreOffice profile lock), so more workers than this
             // only add process overhead.
@@ -310,7 +325,8 @@ pub fn run() {
             commands::submit_merge_pdfs_job,
             commands::get_pdf_page_count,
             commands::get_stream_url,
-            commands::open_output_folder
+            commands::open_output_folder,
+            commands::get_job_logs
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

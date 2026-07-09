@@ -1,7 +1,7 @@
 use crate::consumer::HEARTBEAT_INTERVAL;
 use crate::{convert_document, cut_video, merge_pdfs};
 use async_nats::jetstream::{AckKind, Message};
-use shared::{Job, JobEnvelope, JobStatus, StatusEvent, publish_status};
+use shared::{Job, JobEnvelope, JobStatus, LogEntry, LogLevel, StatusEvent, publish_log, publish_status};
 
 pub struct Bins {
     pub ffmpeg: String,
@@ -32,6 +32,24 @@ async fn emit(client: &async_nats::Client, id: &str, status: JobStatus) {
     let _ = publish_status(client, &event).await;
 }
 
+/// Fire-and-forget diagnostic log entry: spawned rather than awaited inline,
+/// so a momentarily-full NATS send buffer can never delay job pickup or
+/// ack timing (see LOG_SUBJECT doc comment — best-effort, not job-critical).
+pub(crate) fn log(client: &async_nats::Client, job_id: &str, job_type: &'static str, level: LogLevel, message: String) {
+    let client = client.clone();
+    let job_id = job_id.to_string();
+    tokio::spawn(async move {
+        let entry = LogEntry {
+            job_id,
+            job_type: job_type.to_string(),
+            level,
+            message,
+            timestamp: time::OffsetDateTime::now_utc(),
+        };
+        let _ = publish_log(&client, &entry).await;
+    });
+}
+
 /// Deserializes and runs one job, publishing status events along the way.
 /// Always acks: a malformed or failed job must not be redelivered forever.
 pub async fn handle_message(
@@ -48,6 +66,13 @@ pub async fn handle_message(
                 .ok()
                 .and_then(|v| v.get("id")?.as_str().map(String::from))
                 .unwrap_or_else(|| "unknown".to_string());
+            log(
+                client,
+                &id,
+                "unknown",
+                LogLevel::Error,
+                format!("failed to deserialize job: {e}"),
+            );
             emit(
                 client,
                 &id,
@@ -62,16 +87,20 @@ pub async fn handle_message(
     };
 
     let job_id = envelope.id.clone();
+    let job_type = envelope.job.type_name();
     println!("Worker {worker_id} processing job {job_id}");
     emit(client, &job_id, JobStatus::Received).await;
+    log(client, &job_id, job_type, LogLevel::Info, format!("job started (worker {worker_id})"));
 
     let status = match run_job(client, &message, envelope, bins, worker_id).await {
         Ok(()) => {
             println!("Worker {worker_id} done");
+            log(client, &job_id, job_type, LogLevel::Info, "job completed".to_string());
             JobStatus::Done
         }
         Err(e) => {
             eprintln!("Worker {worker_id} failed: {e}");
+            log(client, &job_id, job_type, LogLevel::Error, format!("job failed: {e}"));
             JobStatus::Failed { reason: e }
         }
     };
@@ -111,10 +140,13 @@ async fn run_job(
     // Jobs block on child processes, so run them off the runtime.
     // Box<dyn Error> is not Send; carry errors across the thread as String.
     let job_id = envelope.id;
+    let log_client = client.clone();
     let mut job_task = tokio::task::spawn_blocking(move || {
         match envelope.job {
             Job::CutVideo(j) => cut_video::run(j, &bins.ffmpeg, &progress_tx),
-            Job::ConvertDocument(j) => convert_document::run(j, &job_id, &bins.pandoc, &bins.typst),
+            Job::ConvertDocument(j) => {
+                convert_document::run(j, &job_id, &bins.pandoc, &bins.typst, &log_client)
+            }
             Job::MergePdfs(j) => merge_pdfs::run(j, &bins.pdfcpu),
         }
         .map_err(|e| e.to_string())

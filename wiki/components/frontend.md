@@ -104,11 +104,11 @@ export type TrackedJob = { id: string; tool: Tool; input: string; output: string
 
 React Router `MemoryRouter` is used instead of `BrowserRouter` because there is no web server in a bundled Tauri app — hash or memory routing is required in production. `MemoryRouter` with `initialEntries={['/cut-video']}` means the app always starts on the Cut Video tool.
 
-All job state is in-memory React state. This is intentional for now and tracked as a known issue (→ [[wiki/issues/missing-db-and-progress]]).
+All job state is in-memory React state. This is a permanent decision, not a placeholder — restart-durable job history was decided against (→ [[wiki/issues/missing-db-and-progress]]).
 
 ## Known Issues / Tech Debt
 
-- Job history resets on app restart — no persistence layer yet (→ [[wiki/issues/missing-db-and-progress]]).
+- Job history resets on app restart — intentional, not a missing persistence layer (→ [[wiki/issues/missing-db-and-progress]]). A separate write-only diagnostic log (→ [[wiki/decisions/adr-003-embedded-surrealdb]]) will surface on its own Logs page, not as job-history persistence.
 - PDF conversion has no progress — goes straight from `Received` to `Done`/`Failed` with no intermediate `Processing` state (pandoc does not expose progress).
 
 Corrected stale claim (2026-07-07): an earlier version of this page said drag-and-drop had no extension validation. That was wrong even at the time — each tool's `applyFile`/`addPaths` handler validates the extension on drop, same as the picker. Now verified by [[wiki/components/e2e-tests]] (`cut-video.spec.ts`, `doc-converter.spec.ts`, `merge-pdfs.spec.ts` each assert the rejection toast on an unsupported drop).

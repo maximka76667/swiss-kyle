@@ -12,6 +12,7 @@ import { JobHistory } from "@/components/job-history";
 import { CutVideo } from "@/components/cut-video";
 import { DocConverter } from "@/components/doc-converter";
 import { MergePdfs } from "@/components/merge-pdfs";
+import { DiagnosticsPage } from "@/components/diagnostics-page";
 import { FloatingSidebarTrigger } from "@/components/floating-sidebar-trigger";
 import { Toaster } from "@/components/ui/sonner";
 import type { JobStatus, JobStatusEvent, Tool, TrackedJob } from "@/types/jobs";
@@ -91,6 +92,7 @@ function App() {
                   path="/merge-pdfs"
                   element={<MergePdfs onJobSubmitted={handleJobSubmitted} />}
                 />
+                <Route path="/diagnostics" element={<DiagnosticsPage />} />
               </Routes>
             </SidebarInset>
             <Sidebar side="right" collapsible="offcanvas">

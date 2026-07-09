@@ -62,7 +62,7 @@ The Tauri app replaces the standalone `api.rs` HTTP service — it calls `Publis
 
 ## Known Issues / Tech Debt
 
-- No SurrealDB write on job submission — initial `pending` record not created (→ [[wiki/issues/missing-db-and-progress]]).
+- No SurrealDB write on job submission — an initial `pending` status record was the old plan and is no longer intended (job-status persistence was decided against); a write-only diagnostic log is the current, not-yet-implemented scope (→ [[wiki/decisions/adr-003-embedded-surrealdb]]).
 
 ## Related
 
