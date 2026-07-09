@@ -71,7 +71,7 @@ The native OS "Open File" dialog (`@tauri-apps/plugin-dialog`) is *not* covered 
 
 - Resolved: sidecar processes from one spec file leaked into the next's process checks (→ [[wiki/issues/e2e-sidecar-leak-across-specs]]).
 - Resolved: the worker sidecar silently ran stale code because `prepare-sidecars.ts` rebuilding it doesn't refresh the copy the running app actually spawns (→ [[wiki/issues/tauri-resource-copy-only-on-app-rebuild]]).
-- Resolved (mitigated): a fresh session launched too soon after the previous one's close crashed the new `app.exe` within ~1.5s of starting, roughly 1-in-2 full-suite runs (→ [[wiki/issues/webview2-session-crash-on-fast-relaunch]]). Fixed with an empirically binary-searched 4s delay in the `after` hook (0/20 failures at 4s vs ~4% still failing at 3.5s). The precise WebView2-internal resource behind it wasn't identified — the delay is an empirical margin, not a wait on known state.
+- Mitigated, not fully resolved: a fresh session launched too soon after the previous one's close crashed the new `app.exe` within ~1.5s of starting (→ [[wiki/issues/webview2-session-crash-on-fast-relaunch]]). An empirically binary-searched 4s delay in the `after` hook cut this from ~1-in-2 full-suite runs down to ~1-in-50 (not zero — confirmed by testing well past the first clean-looking batch). The precise WebView2-internal resource behind it wasn't identified — the delay is an empirical margin, not a wait on known state.
 - Linux driving (`webkit2gtk-driver`) is untested — the harness assumes `tauri-driver` resolves the right platform driver, but only Windows/WebView2 has actually been run.
 
 ## Related

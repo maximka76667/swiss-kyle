@@ -49,4 +49,4 @@ _(empty)_
 - [[wiki/issues/fatal-dialog-hang-linux]] — Resolved: fatal()'s error dialog hung silently on Linux (GTK event-loop timing); fixed with xdg-portal
 - [[wiki/issues/e2e-sidecar-leak-across-specs]] — Resolved: a spec that never closed its window orphaned sidecars, failing a later, unrelated spec's process check
 - [[wiki/issues/tauri-resource-copy-only-on-app-rebuild]] — Resolved: rebuilding the worker alone doesn't refresh what the running app spawns; only rebuilding `app.exe` does
-- [[wiki/issues/webview2-session-crash-on-fast-relaunch]] — Resolved (mitigated): a new WebView2 session launched too soon after the last one closed crashed within ~1.5s; fixed with an empirically-tuned 4s delay
+- [[wiki/issues/webview2-session-crash-on-fast-relaunch]] — Mitigated, not fully resolved: a new WebView2 session launched too soon after the last one closed crashed within ~1.5s; a 4s delay cut it from ~1-in-2 to ~1-in-50, not zero

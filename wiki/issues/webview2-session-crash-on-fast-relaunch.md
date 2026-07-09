@@ -1,7 +1,7 @@
 # E2E: New WebView2 Session Crashes If Launched Too Soon After the Previous One Closes
 
 **Type**: issue
-**Summary**: Resolved (mitigated). Launching a fresh `tauri-driver` session immediately after the previous spec's session closed intermittently crashed the new `app.exe` instance within ~1.5s of starting — before its own sidecars finished spawning. Fixed with an empirically-tuned 4-second delay between sessions in `wdio.conf.ts`'s `after` hook.
+**Summary**: Mitigated, not fully resolved. Launching a fresh `tauri-driver` session immediately after the previous spec's session closed intermittently crashed the new `app.exe` instance within ~1.5s of starting — before its own sidecars finished spawning. An empirically-tuned 4-second delay between sessions in `wdio.conf.ts`'s `after` hook cut the failure rate from ~1-in-2 full-suite runs to roughly 1-in-50 (1 failure in a 51-run sample at 4000ms) — a real, large improvement, but not zero.
 **Tags**: #issue #resolved #e2e #testing #flakiness #webview2
 **Sources**: [[e2e/wdio.conf.ts]]
 **Related**: [[wiki/components/e2e-tests]], [[wiki/issues/e2e-sidecar-leak-across-specs]]
@@ -35,13 +35,13 @@ Tuned via binary search on full-suite pass rate (not a single spec in isolation,
 | 2000ms | ~1-in-4 failed |
 | 3000ms | 1/8 failed |
 | 3500ms | 1/25 failed (~4%) |
-| **4000ms** | **0/20 failed** — chosen |
+| 4000ms | 0/20 failed in the first batch — then 1/30 failed in a follow-up batch (1/51 overall, ~2%) |
 
-4000ms was chosen over 3500ms specifically because 3500ms still showed a failure in a 25-run sample; 4000ms had zero in 20.
+4000ms was chosen over 3500ms as the clearly better tradeoff (~2% vs ~4%+ residual failure rate), not as a guaranteed fix — a first batch of 20 with zero failures looked clean, but a larger follow-up batch (prompted by suspicion that the good streak was still just luck, which proved correct) surfaced one more failure. This matches 3500ms's own pattern (clean 10/10, then a failure in the next 15) — small samples of a low-probability event understate its true rate.
 
 ## Known Issues / Tech Debt
 
-The 4000ms figure is an empirical margin on one development machine under one load profile, not a principled bound — it could need retuning on different hardware, under different system load, or in CI. If this resurfaces, re-run the same binary-search process rather than guessing a new constant. The underlying WebView2-level resource has not been identified precisely; doing so would need Windows crash-dump or ETW-level tracing.
+Not fully fixed — the residual ~2% failure rate at 4000ms is real, confirmed by testing well past the point the first clean batch would have suggested "resolved." The 4000ms figure is an empirical margin on one development machine under one load profile, not a principled bound — it could need retuning (or accepting a nonzero baseline failure rate) on different hardware, under different system load, or in CI. The underlying WebView2-level resource has not been identified precisely; doing so would need Windows crash-dump or ETW-level tracing. If this becomes disruptive, that deeper investigation — or an occasional-failure-tolerant CI retry policy — is probably a better next step than pushing the delay higher, which has diminishing returns and directly costs wall-clock time on every run.
 
 ## Related
 
