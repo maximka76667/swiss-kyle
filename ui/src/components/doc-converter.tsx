@@ -77,7 +77,7 @@ export function DocConverter({ onJobSubmitted }: Props) {
     }
   }
 
-  const { isDragging } = useFileDrop((paths) => {
+  const { isDragging, ready: dropReady } = useFileDrop((paths) => {
     if (paths[0]) applyFile(paths[0]);
   });
 
@@ -134,6 +134,7 @@ export function DocConverter({ onJobSubmitted }: Props) {
               ? "border-primary bg-primary/5"
               : "border-muted-foreground/30 bg-muted/20 hover:bg-muted/30",
           )}
+          data-drop-ready={dropReady}
           onClick={pickFile}
         >
           <Upload className="h-8 w-8 text-muted-foreground" />

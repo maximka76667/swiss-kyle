@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /tmp/msedgedriver)",
+      "Bash(curl -fL -o /tmp/msedgedriver.zip \"https://msedgedriver.azureedge.net/150.0.4078.48/edgedriver_win64.zip\")"
+    ]
+  }
+}

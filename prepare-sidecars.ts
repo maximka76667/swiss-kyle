@@ -74,8 +74,11 @@ function killLeftoverSidecars(): void {
 killLeftoverSidecars();
 
 // --- Worker (always rebuild) ---
-execSync("cargo build -p worker", { stdio: "inherit" });
-copyFileSync(`target/debug/worker${EXT}`, `${BIN_DIR}/worker-${TRIPLE}${EXT}`);
+execSync("cargo build -p swiss-kyle-worker", { stdio: "inherit" });
+copyFileSync(
+  `target/debug/swiss-kyle-worker${EXT}`,
+  `${BIN_DIR}/swiss-kyle-worker-${TRIPLE}${EXT}`,
+);
 
 function present(path: string): boolean {
   try {

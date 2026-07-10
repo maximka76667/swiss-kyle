@@ -165,15 +165,16 @@ export function MergePdfs({ onJobSubmitted }: Props) {
             prev.map((e) => (e.key === entry.key ? { ...e, pageCount } : e)),
           );
         })
-        .catch(() => {
+        .catch((e) => {
+          console.error("get_pdf_page_count failed:", e);
           setEntries((prev) =>
-            prev.map((e) => (e.key === entry.key ? { ...e, pageCount: "error" } : e)),
+            prev.map((e2) => (e2.key === entry.key ? { ...e2, pageCount: "error" } : e2)),
           );
         });
     }
   }
 
-  const { isDragging } = useFileDrop((paths) => addPaths(paths));
+  const { isDragging, ready: dropReady } = useFileDrop((paths) => addPaths(paths));
 
   async function pickFiles() {
     const paths = await open({
@@ -255,6 +256,7 @@ export function MergePdfs({ onJobSubmitted }: Props) {
               ? "border-primary bg-primary/5"
               : "border-muted-foreground/30 bg-muted/20 hover:bg-muted/30",
           )}
+          data-drop-ready={dropReady}
           onClick={pickFiles}
         >
           <Upload className="h-6 w-6 text-muted-foreground" />

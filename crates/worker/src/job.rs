@@ -88,19 +88,20 @@ pub async fn handle_message(
 
     let job_id = envelope.id.clone();
     let job_type = envelope.job.type_name();
-    println!("Worker {worker_id} processing job {job_id}");
+    let job_desc = envelope.job.describe();
+    println!("Worker {worker_id} processing job {job_id}: {job_desc}");
     emit(client, &job_id, JobStatus::Received).await;
-    log(client, &job_id, job_type, LogLevel::Info, format!("job started (worker {worker_id})"));
+    log(client, &job_id, job_type, LogLevel::Info, format!("job started (worker {worker_id}): {job_desc}"));
 
     let status = match run_job(client, &message, envelope, bins, worker_id).await {
         Ok(()) => {
             println!("Worker {worker_id} done");
-            log(client, &job_id, job_type, LogLevel::Info, "job completed".to_string());
+            log(client, &job_id, job_type, LogLevel::Info, format!("job completed: {job_desc}"));
             JobStatus::Done
         }
         Err(e) => {
             eprintln!("Worker {worker_id} failed: {e}");
-            log(client, &job_id, job_type, LogLevel::Error, format!("job failed: {e}"));
+            log(client, &job_id, job_type, LogLevel::Error, format!("job failed: {job_desc}: {e}"));
             JobStatus::Failed { reason: e }
         }
     };

@@ -74,6 +74,36 @@ impl Job {
             Job::MergePdfs(_) => "merge-pdfs",
         }
     }
+
+    /// Human-readable summary for diagnostic logs — filenames only, not full paths.
+    pub fn describe(&self) -> String {
+        fn basename(path: &str) -> &str {
+            std::path::Path::new(path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or(path)
+        }
+        match self {
+            Job::CutVideo(j) => format!(
+                "{} [{:.1}s-{:.1}s] → {}",
+                basename(&j.input),
+                j.start_secs,
+                j.end_secs,
+                j.output
+            ),
+            Job::ConvertDocument(j) => format!(
+                "{} → {}.{}",
+                basename(&j.input),
+                j.output_stem,
+                j.to_format.extension()
+            ),
+            Job::MergePdfs(j) => format!(
+                "{} → {}.pdf",
+                j.inputs.iter().map(|p| basename(p)).collect::<Vec<_>>().join(", "),
+                j.output_stem
+            ),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

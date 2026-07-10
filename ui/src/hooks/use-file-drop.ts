@@ -10,6 +10,10 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
  */
 export function useFileDrop(onDrop: (paths: string[]) => void) {
   const [isDragging, setIsDragging] = useState(false);
+  // `onDragDropEvent` registers the listener over IPC — it isn't actually
+  // attached until that promise resolves, which can lag well behind this
+  // component's render (and any DOM text a caller might wait on instead).
+  const [ready, setReady] = useState(false);
   const onDropRef = useRef(onDrop);
   useEffect(() => {
     onDropRef.current = onDrop;
@@ -32,7 +36,10 @@ export function useFileDrop(onDrop: (paths: string[]) => void) {
       })
       .then((fn) => {
         if (cancelled) fn();
-        else unlisten = fn;
+        else {
+          unlisten = fn;
+          setReady(true);
+        }
       });
 
     return () => {
@@ -41,5 +48,5 @@ export function useFileDrop(onDrop: (paths: string[]) => void) {
     };
   }, []);
 
-  return { isDragging };
+  return { isDragging, ready };
 }

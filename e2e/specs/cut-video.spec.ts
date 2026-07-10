@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { byText } from "../support/selectors";
 import { dropFile } from "../support/drag-drop";
+import { jsClick } from "../support/click";
 
 describe("cut video", () => {
   it("accepts a video dropped onto the window", async () => {
@@ -33,7 +34,7 @@ describe("cut video", () => {
     await endSecs.setValue("1");
 
     const submitButton = await byText("Submit job");
-    await submitButton.click();
+    await jsClick(submitButton);
 
     // Job history sidebar is open by default (SidebarProvider's defaultOpen).
     const doneBadge = await byText("Done");

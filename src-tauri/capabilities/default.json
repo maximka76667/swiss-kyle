@@ -13,7 +13,7 @@
       "identifier": "shell:allow-execute",
       "allow": [
         { "name": "binaries/nats-server", "sidecar": true, "args": true },
-        { "name": "binaries/worker", "sidecar": true, "args": true }
+        { "name": "binaries/swiss-kyle-worker", "sidecar": true, "args": true }
       ]
     }
   ]

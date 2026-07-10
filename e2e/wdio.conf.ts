@@ -1,6 +1,7 @@
 import { spawn, execSync, type ChildProcess } from "node:child_process";
 import { createConnection } from "node:net";
 import { resolve } from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
 
 let viteProcess: ChildProcess | undefined;
 let tauriDriverProcess: ChildProcess | undefined;
@@ -44,7 +45,13 @@ export const config: WebdriverIO.Config = {
     {
       // @ts-expect-error tauri-driver capability, not part of the standard WebDriver type
       "tauri:options": {
-        application: resolve(import.meta.dirname, "../target/debug/app.exe"),
+        // Cargo package is named "app" (see src-tauri/Cargo.toml); mainBinaryName
+        // in tauri.conf.json only renames the bundled output, not this raw
+        // `cargo build` artifact. Windows appends .exe, Linux/macOS don't.
+        application: resolve(
+          import.meta.dirname,
+          `../target/debug/app${process.platform === "win32" ? ".exe" : ""}`,
+        ),
       },
     },
   ],
@@ -56,14 +63,25 @@ export const config: WebdriverIO.Config = {
   },
   reporters: ["spec"],
   onPrepare: async () => {
+    // detached: true (POSIX only) makes each process its own group leader, so
+    // its own children (bun's actual vite/node, tauri-driver's spawned
+    // WebKitWebDriver+app) land in that same group and can be killed as a
+    // unit via `process.kill(-pid, ...)` in onComplete below — without ever
+    // touching this wdio process's own group, which must exit normally to
+    // report the real pass/fail status. No effect on Windows, where taskkill
+    // /T walks the process tree itself instead.
+    const detached = process.platform !== "win32";
+
     viteProcess = spawn("bun", ["dev"], {
       cwd: resolve(import.meta.dirname, "../ui"),
       stdio: "ignore",
+      detached,
     });
     await waitForPort(5173);
 
     tauriDriverProcess = spawn("tauri-driver", [], {
       stdio: "ignore",
+      detached,
     });
     await waitForPort(4444);
   },
@@ -95,14 +113,35 @@ export const config: WebdriverIO.Config = {
     // delay, not a wait on real state.
     await new Promise((r) => setTimeout(r, SESSION_TEARDOWN_DELAY_MS));
   },
+  afterTest: async (test, _context, { passed }) => {
+    if (passed) return;
+    try {
+      const source = await browser.getPageSource();
+      const dir = resolve(import.meta.dirname, ".artifacts");
+      await mkdir(dir, { recursive: true });
+      const file = resolve(
+        dir,
+        `${test.parent}-${test.title}`.replace(/[^\w.-]+/g, "_") + ".html",
+      );
+      await writeFile(file, source);
+      console.log(`[afterTest] saved page source for failing test to ${file}`);
+    } catch (e) {
+      console.log(`[afterTest] failed to capture page source: ${e}`);
+    }
+  },
   onComplete: () => {
     for (const proc of [viteProcess, tauriDriverProcess]) {
-      if (proc?.pid) {
-        try {
+      if (!proc?.pid) continue;
+      try {
+        if (process.platform === "win32") {
           execSync(`taskkill /pid ${proc.pid} /T /F`);
-        } catch {
-          // already dead
+        } else {
+          // negative pid = signal the whole group this process leads (see
+          // the `detached` note in onPrepare above), not just itself.
+          process.kill(-proc.pid, "SIGKILL");
         }
+      } catch {
+        // already dead
       }
     }
   },

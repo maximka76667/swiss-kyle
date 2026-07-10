@@ -55,9 +55,10 @@ fn fatal(app: &tauri::AppHandle, msg: &str) -> ! {
 /// mechanism, which places binaries directly in /usr/bin on .deb installs
 /// and can collide with real system packages (ffmpeg, and even nats-server
 /// on some systems). All six bundled tools use this: ffmpeg/pandoc/typst/
-/// pdfcpu are only ever resolved to a path string (invoked by the `worker`
-/// process itself, not by this app); nats-server/worker are resolved here
-/// too and spawned via `app.shell().command(path)` rather than `.sidecar()`,
+/// pdfcpu are only ever resolved to a path string (invoked by the
+/// `swiss-kyle-worker` process itself, not by this app); nats-server/
+/// swiss-kyle-worker are resolved here too and spawned via
+/// `app.shell().command(path)` rather than `.sidecar()`,
 /// since `.sidecar()` requires `externalBin` registration and its next-to-
 /// exe resolution.
 fn resolve_bin(app: &tauri::AppHandle, name: &str) -> Result<String, String> {
@@ -290,7 +291,7 @@ pub fn run() {
             );
             app.manage(PdfcpuBin(pdfcpu_bin.clone()));
 
-            let worker_bin = resolve("worker");
+            let worker_bin = resolve("swiss-kyle-worker");
             for worker_id in 0..num_workers {
                 let (mut worker_rx, worker_child) = app
                     .shell()

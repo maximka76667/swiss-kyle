@@ -38,7 +38,7 @@
       "binaries/typst-*": "bin/",
       "binaries/pdfcpu-*": "bin/",
       "binaries/nats-server-*": "bin/",
-      "binaries/worker-*": "bin/"
+      "binaries/swiss-kyle-worker-*": "bin/"
     },
     "icon": [
       "icons/32x32.png",
