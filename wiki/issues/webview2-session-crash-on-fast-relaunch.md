@@ -4,8 +4,8 @@
 **Summary**: Mitigated, not fully resolved. Launching a fresh `tauri-driver` session immediately after the previous spec's session closed intermittently crashed the new `app.exe` instance within ~1.5s of starting — before its own sidecars finished spawning. An empirically-tuned 4-second delay between sessions in `wdio.conf.ts`'s `after` hook cut the failure rate from ~1-in-2 full-suite runs to roughly 1-in-50 (1 failure in a 51-run sample at 4000ms) — a real, large improvement, but not zero.
 **Tags**: #issue #resolved #e2e #testing #flakiness #webview2
 **Sources**: [[e2e/wdio.conf.ts]]
-**Related**: [[wiki/components/e2e-tests]], [[wiki/issues/e2e-sidecar-leak-across-specs]]
-**Last Updated**: 2026-07-08
+**Related**: [[wiki/components/e2e-tests]], [[wiki/issues/e2e-sidecar-leak-across-specs]], [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]]
+**Last Updated**: 2026-07-10
 
 ---
 
@@ -43,6 +43,8 @@ Tuned via binary search on full-suite pass rate (not a single spec in isolation,
 
 Not fully fixed — the residual ~2% failure rate at 4000ms is real, confirmed by testing well past the point the first clean batch would have suggested "resolved." The 4000ms figure is an empirical margin on one development machine under one load profile, not a principled bound — it could need retuning (or accepting a nonzero baseline failure rate) on different hardware, under different system load, or in CI. The underlying WebView2-level resource has not been identified precisely; doing so would need Windows crash-dump or ETW-level tracing. If this becomes disruptive, that deeper investigation — or an occasional-failure-tolerant CI retry policy — is probably a better next step than pushing the delay higher, which has diminishing returns and directly costs wall-clock time on every run.
 
+A superficially similar Linux failure in `sidecars.spec.ts` was initially suspected to be this same bug reappearing on a new platform — it wasn't. Confirmed unrelated by direct investigation (→ [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]]): the Linux failure was 100% reproducible on the very first attempt at zero delay, not a rare timing-sensitive race, and traced to two different causes (an expected-but-unhandled error from the window-close call, and an unrelated process-name matching bug). Worth remembering that not every "session died shortly after launch"-shaped failure is this issue.
+
 ## Related
 
-[[wiki/components/e2e-tests]], [[wiki/issues/e2e-sidecar-leak-across-specs]]
+[[wiki/components/e2e-tests]], [[wiki/issues/e2e-sidecar-leak-across-specs]], [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]]

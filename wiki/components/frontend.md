@@ -4,8 +4,8 @@
 **Summary**: `ui/` — React/TypeScript/Vite app embedded in the Tauri window; provides three tools (Cut Video, Doc Converter, Merge PDFs), drag-and-drop file picking, job submission, and a live job history sidebar.
 **Tags**: #component #react #frontend #tauri
 **Sources**: [[ui/src/App.tsx]], [[ui/src/main.tsx]], [[ui/src/components/cut-video.tsx]], [[ui/src/components/doc-converter.tsx]], [[ui/src/components/merge-pdfs.tsx]], [[ui/src/components/tool-nav.tsx]], [[ui/src/components/tool-page.tsx]], [[ui/src/components/video-player.tsx]], [[ui/src/components/job-history.tsx]], [[ui/src/hooks/use-file-drop.ts]], [[ui/src/types/jobs.ts]]
-**Related**: [[wiki/components/tauri-app]], [[wiki/components/video-server]], [[wiki/components/job-types]], [[wiki/components/e2e-tests]]
-**Last Updated**: 2026-07-07
+**Related**: [[wiki/components/tauri-app]], [[wiki/components/video-server]], [[wiki/components/job-types]], [[wiki/components/e2e-tests]], [[wiki/issues/e2e-file-drop-listener-race]]
+**Last Updated**: 2026-07-10
 
 ---
 
@@ -40,6 +40,8 @@ Shared layout wrapper used by every tool. Renders a centered `h1` title and desc
 ### File drop (`useFileDrop`)
 
 All three tools take input files two ways: click-to-browse (native `@tauri-apps/plugin-dialog` `open()`, filtered by extension) or drag-and-drop. Drag-and-drop does **not** go through the browser's HTML5 DnD/`dataTransfer` API — Tauri intercepts OS-level file drops at the WebView layer so it can resolve real filesystem paths (browsers otherwise hide these). `useFileDrop` (`ui/src/hooks/use-file-drop.ts`) subscribes to `getCurrentWebview().onDragDropEvent(...)`, which is built on the `tauri://drag-drop`/`-enter`/`-over`/`-leave` events, and calls back with the dropped paths on a `drop` event.
+
+`onDragDropEvent(...)` returns a Promise — the listener isn't actually attached the instant the hook runs, it's a real IPC round-trip to register on the Rust side. `useFileDrop` exposes this as a `ready: boolean`, flipped `true` only once that promise resolves, and each tool puts it on its dropzone element as `data-drop-ready` so both real usage and tests have something to check besides "did the dropzone render" (→ [[wiki/issues/e2e-file-drop-listener-race]] — a dropped file arriving before the listener attaches is silently lost, confirmed to happen under enough system load, not just a theoretical race).
 
 Each tool's own `applyFile`/`addPaths` handler — not the drop handler itself — enforces the extension allowlist and shows a `sonner` error toast on rejection (CutVideo: `VIDEO_EXTS`; DocConverter: `INPUT_EXT_TO_FORMAT` keys; MergePdfs: must end in `.pdf`, partial-accepts a batch and reports how many were skipped). Drag-and-drop and the native picker share this same validation path. Covered end-to-end by [[wiki/components/e2e-tests]] (drop events are simulated by emitting `tauri://drag-drop` directly over IPC, since there's no real OS drag to script).
 

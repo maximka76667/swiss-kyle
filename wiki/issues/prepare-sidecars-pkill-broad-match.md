@@ -4,8 +4,8 @@
 **Summary**: Resolved. `prepare-sidecars.ts` used `pkill -f worker` to clean up stale sidecar processes before rebuilding, which matched the substring "worker" in *any* process's full command line — including VS Code's own renderer processes on Linux — closing the editor window on every `bun tauri dev` run.
 **Tags**: #issue #resolved #linux #dev-workflow
 **Sources**: [[prepare-sidecars.ts]], [[src-tauri/src/lib.rs]]
-**Related**: [[wiki/components/tauri-app]], [[wiki/decisions/adr-004-private-sidecar-resources]]
-**Last Updated**: 2026-07-03
+**Related**: [[wiki/components/tauri-app]], [[wiki/decisions/adr-004-private-sidecar-resources]], [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]]
+**Last Updated**: 2026-07-10
 
 ---
 
@@ -38,4 +38,4 @@ None remaining — verified fixed by testing `bun tauri dev` after the change wi
 
 ## Related
 
-[[wiki/components/tauri-app]], [[wiki/decisions/adr-004-private-sidecar-resources]]
+[[wiki/components/tauri-app]], [[wiki/decisions/adr-004-private-sidecar-resources]], [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]]

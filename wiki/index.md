@@ -1,6 +1,6 @@
 # Wiki Index
 
-_Last updated: 2026-07-09_
+_Last updated: 2026-07-10_
 
 ## Architecture
 
@@ -50,3 +50,6 @@ _(empty)_
 - [[wiki/issues/e2e-sidecar-leak-across-specs]] — Resolved: a spec that never closed its window orphaned sidecars, failing a later, unrelated spec's process check
 - [[wiki/issues/tauri-resource-copy-only-on-app-rebuild]] — Resolved: rebuilding the worker alone doesn't refresh what the running app spawns; only rebuilding `app.exe` does
 - [[wiki/issues/webview2-session-crash-on-fast-relaunch]] — Mitigated, not fully resolved: a new WebView2 session launched too soon after the last one closed crashed within ~1.5s; a 4s delay cut it from ~1-in-2 to ~1-in-50, not zero
+- [[wiki/issues/e2e-linux-native-click-unreliable]] — Resolved: native WebDriver pointer clicks don't reliably activate elements via wry's Linux backend; fixed by dispatching `.click()` on the resolved DOM element via `browser.execute()`
+- [[wiki/issues/e2e-file-drop-listener-race]] — Resolved: useFileDrop's listener registration is an async IPC round-trip, not synchronous with render; a drop arriving before it resolves is silently lost
+- [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]] — Resolved: two unrelated Linux bugs in one test — an expected-but-unhandled close-command error, and a kworker-thread substring collision in process-name matching

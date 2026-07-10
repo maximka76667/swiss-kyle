@@ -4,8 +4,8 @@
 **Summary**: Moved all six bundled tools (nats-server, worker, ffmpeg, pandoc, typst, pdfcpu) from Tauri's `externalBin`/sidecar mechanism to `bundle.resources`, so packaged builds place them in a private per-app directory instead of the shared `/usr/bin` on Linux.
 **Tags**: #decision #packaging #linux #tauri
 **Sources**: [[src-tauri/tauri.conf.json]], [[src-tauri/src/lib.rs]]
-**Related**: [[wiki/components/tauri-app]], [[wiki/issues/sidecar-path-resolution-usr-bin-collision]], [[wiki/issues/prepare-sidecars-pkill-broad-match]]
-**Last Updated**: 2026-07-03
+**Related**: [[wiki/components/tauri-app]], [[wiki/issues/sidecar-path-resolution-usr-bin-collision]], [[wiki/issues/prepare-sidecars-pkill-broad-match]], [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]]
+**Last Updated**: 2026-07-10
 
 ---
 

@@ -4,8 +4,8 @@
 **Summary**: `crates/worker/` — pulls `JobEnvelope` messages from NATS, dispatches to `cut_video` or `convert_document` modules, publishes `StatusEvent` updates throughout the job lifecycle.
 **Tags**: #component #worker #ffmpeg #pandoc #nats #progress
 **Sources**: [[crates/worker/src/main.rs]], [[crates/worker/src/consumer.rs]], [[crates/worker/src/job.rs]], [[crates/worker/src/cut_video.rs]], [[crates/worker/src/convert_document.rs]], [[crates/worker/src/error.rs]]
-**Related**: [[wiki/components/job-types]], [[wiki/components/publisher]], [[wiki/concepts/jetstream-pull-consumer]], [[wiki/issues/missing-db-and-progress]]
-**Last Updated**: 2026-07-02
+**Related**: [[wiki/components/job-types]], [[wiki/components/publisher]], [[wiki/concepts/jetstream-pull-consumer]], [[wiki/issues/missing-db-and-progress]], [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]]
+**Last Updated**: 2026-07-10
 
 ---
 
@@ -16,6 +16,8 @@ The worker is the consumer side of the queue. Each instance creates the durable 
 The Tauri app spawns one worker sidecar per CPU core. Each is passed a numeric `worker_id` via `argv[1]` (log prefixes only) and three env vars: `FFMPEG_BIN`, `PANDOC_BIN`, `TYPST_BIN` — resolved paths to the bundled binaries.
 
 The crate is split into three source files by concern: `main.rs` is the thin entry point (connect, get stream, `ensure_consumer`, fetch loop); `consumer.rs` owns the durable-consumer lifecycle and the ack-protocol constants; `job.rs` owns processing a single message.
+
+The crate's Cargo package name (and therefore its compiled binary name) is `swiss-kyle-worker`, not `worker` — renamed specifically so process-name matching elsewhere can't collide with anything else (→ [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]]). The directory (`crates/worker/`) and module layout are unaffected; only the `[package] name` in `Cargo.toml` and everywhere that resolves the built binary by name changed.
 
 ## Details
 
