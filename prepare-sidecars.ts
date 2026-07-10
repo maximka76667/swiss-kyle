@@ -1,6 +1,14 @@
 import { execSync, spawnSync } from "child_process";
 import { randomBytes } from "crypto";
-import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from "fs";
+import {
+  copyFileSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "fs";
 import { tmpdir } from "os";
 import { join, resolve } from "path";
 
@@ -20,6 +28,24 @@ const NATS_VERSION = "2.10.22";
 const PANDOC_VERSION = "3.6.3";
 const TYPST_VERSION = "0.15.0";
 const PDFCPU_VERSION = "0.13.0";
+// BtbN/FFmpeg-Builds' "latest" release tag has a stable, predictable
+// filename (ffmpeg-master-latest-*), which is why it was used originally —
+// but it floats to whatever their CI most recently published, unlike every
+// other tool here. That bit a real release build: a fresh checkout with no
+// locally-cached ffmpeg binary downloaded a then-"latest" build that turned
+// out to be dynamically linked against libavdevice.so.58, without that
+// shared library ever getting bundled alongside it (this script only
+// extracts the `ffmpeg` executable itself) — "error while loading shared
+// libraries: libavdevice.so.58" at runtime, on a machine where that .so
+// isn't installed. Confirmed by direct comparison: the already-working
+// local binary (cached from before this broke) links against nothing but
+// baseline glibc libraries; a fresh "latest" download does not. Pinned to a
+// specific tagged release + FFmpeg version instead, verified to link
+// cleanly the same way. Tagged (non-"latest") releases embed a commit hash
+// in every asset filename, so bumping this pin later means finding the new
+// filename on the releases page, not just editing a version number.
+const FFMPEG_TAG = "autobuild-2026-07-03-13-21";
+const FFMPEG_ASSET_STEM = "ffmpeg-n7.1.5-1-g7d0e842004";
 
 // Kill stale sidecar processes (from a previous run that didn't exit
 // cleanly) that would lock binaries during rebuild. Only kills PIDs read
@@ -88,6 +114,25 @@ function present(path: string): boolean {
   }
 }
 
+// Sits next to the binary, e.g. `pandoc-x86_64-unknown-linux-gnu.version`.
+// A version bump (pinned constant changed) needs to actually invalidate a
+// machine's existing cache — `present()` alone only proves *a* file is
+// there, not that it's the file the current pin expects. A stale binary
+// left over from an older pin otherwise sits there forever, silently never
+// refreshed, since nothing else here would ever notice or re-download it.
+function versionMarkerPath(dest: string): string {
+  return `${dest}.version`;
+}
+
+function cachedVersionMatches(dest: string, version: string): boolean {
+  if (!present(dest)) return false;
+  try {
+    return readFileSync(versionMarkerPath(dest), "utf8").trim() === version;
+  } catch {
+    return false;
+  }
+}
+
 function findFile(dir: string, name: string): string | null {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);
@@ -110,14 +155,21 @@ async function extract(
   mkdirSync(tmp, { recursive: true });
   try {
     console.log(`Downloading ${url.split("/").pop()}...`);
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`);
     const archive = join(tmp, "archive");
-    await Bun.write(archive, res);
-    const result = spawnSync("tar", ["-xf", archive, "-C", tmp], {
+    // curl, not fetch()+Bun.write() — Bun's fetch hung indefinitely and
+    // reproducibly (confirmed 3 separate times, on two different files) part
+    // way through large (100MB+) downloads in this environment: sustained
+    // ~100% CPU, no network connection and no subprocess visible while
+    // stuck, never recovering on its own. curl never reproduced this once
+    // across many manual re-tests of the same URLs.
+    const downloaded = spawnSync("curl", ["-fL", "-o", archive, url], {
       stdio: "inherit",
     });
-    if (result.status !== 0) throw new Error("tar extraction failed");
+    if (downloaded.status !== 0) throw new Error(`curl failed fetching ${url}`);
+    const extracted = spawnSync("tar", ["-xf", archive, "-C", tmp], {
+      stdio: "inherit",
+    });
+    if (extracted.status !== 0) throw new Error("tar extraction failed");
     const found = findFile(tmp, binaryName);
     if (!found) throw new Error(`${binaryName} not found in archive`);
     copyFileSync(found, dest);
@@ -131,10 +183,11 @@ type TripleMap = Partial<Record<string, { url: string; binary: string }>>;
 async function downloadBinary(
   dest: string,
   label: string,
+  version: string,
   map: TripleMap,
 ): Promise<void> {
-  if (present(dest)) {
-    console.log(`${label} already present, skipping download`);
+  if (cachedVersionMatches(dest, version)) {
+    console.log(`${label} already present at ${version}, skipping download`);
     return;
   }
   const entry = map[TRIPLE];
@@ -143,6 +196,7 @@ async function downloadBinary(
       `No ${label} download defined for ${TRIPLE} — place the binary manually at ${dest}`,
     );
   await extract(entry.url, entry.binary, dest);
+  writeFileSync(versionMarkerPath(dest), version);
   console.log(`${label} ready at ${dest}`);
 }
 
@@ -150,6 +204,7 @@ async function downloadBinary(
 await downloadBinary(
   `${BIN_DIR}/nats-server-${TRIPLE}${EXT}`,
   `nats-server ${NATS_VERSION}`,
+  NATS_VERSION,
   {
     "x86_64-unknown-linux-gnu": {
       url: `https://github.com/nats-io/nats-server/releases/download/v${NATS_VERSION}/nats-server-v${NATS_VERSION}-linux-amd64.tar.gz`,
@@ -179,13 +234,13 @@ await downloadBinary(
 );
 
 // --- ffmpeg ---
-await downloadBinary(`${BIN_DIR}/ffmpeg-${TRIPLE}${EXT}`, "ffmpeg", {
+await downloadBinary(`${BIN_DIR}/ffmpeg-${TRIPLE}${EXT}`, `ffmpeg (${FFMPEG_TAG})`, FFMPEG_TAG, {
   "x86_64-unknown-linux-gnu": {
-    url: "https://github.com/BtbN/ffmpeg-builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz",
+    url: `https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_TAG}/${FFMPEG_ASSET_STEM}-linux64-gpl-7.1.tar.xz`,
     binary: "ffmpeg",
   },
   "aarch64-unknown-linux-gnu": {
-    url: "https://github.com/BtbN/ffmpeg-builds/releases/download/latest/ffmpeg-master-latest-linuxarm64-gpl.tar.xz",
+    url: `https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_TAG}/${FFMPEG_ASSET_STEM}-linuxarm64-gpl-7.1.tar.xz`,
     binary: "ffmpeg",
   },
   "x86_64-apple-darwin": {
@@ -197,11 +252,11 @@ await downloadBinary(`${BIN_DIR}/ffmpeg-${TRIPLE}${EXT}`, "ffmpeg", {
     binary: "ffmpeg",
   },
   "x86_64-pc-windows-msvc": {
-    url: "https://github.com/BtbN/ffmpeg-builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip",
+    url: `https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_TAG}/${FFMPEG_ASSET_STEM}-win64-gpl-7.1.zip`,
     binary: "ffmpeg.exe",
   },
   "x86_64-pc-windows-gnu": {
-    url: "https://github.com/BtbN/ffmpeg-builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip",
+    url: `https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_TAG}/${FFMPEG_ASSET_STEM}-win64-gpl-7.1.zip`,
     binary: "ffmpeg.exe",
   },
 });
@@ -210,6 +265,7 @@ await downloadBinary(`${BIN_DIR}/ffmpeg-${TRIPLE}${EXT}`, "ffmpeg", {
 await downloadBinary(
   `${BIN_DIR}/pandoc-${TRIPLE}${EXT}`,
   `pandoc ${PANDOC_VERSION}`,
+  PANDOC_VERSION,
   {
     "x86_64-unknown-linux-gnu": {
       url: `https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-linux-amd64.tar.gz`,
@@ -242,6 +298,7 @@ await downloadBinary(
 await downloadBinary(
   `${BIN_DIR}/typst-${TRIPLE}${EXT}`,
   `typst ${TYPST_VERSION}`,
+  TYPST_VERSION,
   {
     "x86_64-unknown-linux-gnu": {
       url: `https://github.com/typst/typst/releases/download/v${TYPST_VERSION}/typst-x86_64-unknown-linux-musl.tar.xz`,
@@ -274,6 +331,7 @@ await downloadBinary(
 await downloadBinary(
   `${BIN_DIR}/pdfcpu-${TRIPLE}${EXT}`,
   `pdfcpu ${PDFCPU_VERSION}`,
+  PDFCPU_VERSION,
   {
     "x86_64-unknown-linux-gnu": {
       url: `https://github.com/pdfcpu/pdfcpu/releases/download/v${PDFCPU_VERSION}/pdfcpu_${PDFCPU_VERSION}_Linux_x86_64.tar.xz`,

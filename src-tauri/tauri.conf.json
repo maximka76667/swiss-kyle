@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Swiss Kyle",
-  "version": "0.1.0",
+  "version": "0.0.7",
   "identifier": "com.swiss.kyle",
   "build": {
     "frontendDist": "../ui/dist",
@@ -47,6 +47,11 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "linux": {
+      "appimage": {
+        "bundleMediaFramework": true
+      }
+    },
     "android": {
       "debugApplicationIdSuffix": ".debug"
     }
