@@ -3,9 +3,16 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["bun-types", "node"],
+    "types": [
+      "bun-types",
+      "node"
+    ],
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["prepare-sidecars.ts", "fix-appimage-typst.ts"]
+  "include": [
+    "prepare-sidecars.ts",
+    "fix-appimage-typst.ts",
+    "mark-sidecar-version.ts"
+  ]
 }

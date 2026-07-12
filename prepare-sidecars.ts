@@ -11,6 +11,15 @@ import {
 } from "fs";
 import { tmpdir } from "os";
 import { join, resolve } from "path";
+import {
+  FFMPEG_ASSET_STEM,
+  FFMPEG_TAG,
+  NATS_VERSION,
+  PANDOC_VERSION,
+  PDFCPU_VERSION,
+  TYPST_VERSION,
+  versionMarkerPath,
+} from "./sidecar-versions";
 
 process.chdir(import.meta.dir);
 
@@ -23,29 +32,6 @@ console.log(`Detected triple: ${TRIPLE}`);
 
 const BIN_DIR = "src-tauri/binaries";
 mkdirSync(BIN_DIR, { recursive: true });
-
-const NATS_VERSION = "2.10.22";
-const PANDOC_VERSION = "3.6.3";
-const TYPST_VERSION = "0.15.0";
-const PDFCPU_VERSION = "0.13.0";
-// BtbN/FFmpeg-Builds' "latest" release tag has a stable, predictable
-// filename (ffmpeg-master-latest-*), which is why it was used originally —
-// but it floats to whatever their CI most recently published, unlike every
-// other tool here. That bit a real release build: a fresh checkout with no
-// locally-cached ffmpeg binary downloaded a then-"latest" build that turned
-// out to be dynamically linked against libavdevice.so.58, without that
-// shared library ever getting bundled alongside it (this script only
-// extracts the `ffmpeg` executable itself) — "error while loading shared
-// libraries: libavdevice.so.58" at runtime, on a machine where that .so
-// isn't installed. Confirmed by direct comparison: the already-working
-// local binary (cached from before this broke) links against nothing but
-// baseline glibc libraries; a fresh "latest" download does not. Pinned to a
-// specific tagged release + FFmpeg version instead, verified to link
-// cleanly the same way. Tagged (non-"latest") releases embed a commit hash
-// in every asset filename, so bumping this pin later means finding the new
-// filename on the releases page, not just editing a version number.
-const FFMPEG_TAG = "autobuild-2026-07-03-13-21";
-const FFMPEG_ASSET_STEM = "ffmpeg-n7.1.5-1-g7d0e842004";
 
 // Kill stale sidecar processes (from a previous run that didn't exit
 // cleanly) that would lock binaries during rebuild. Only kills PIDs read
@@ -114,16 +100,11 @@ function present(path: string): boolean {
   }
 }
 
-// Sits next to the binary, e.g. `pandoc-x86_64-unknown-linux-gnu.version`.
 // A version bump (pinned constant changed) needs to actually invalidate a
 // machine's existing cache — `present()` alone only proves *a* file is
 // there, not that it's the file the current pin expects. A stale binary
 // left over from an older pin otherwise sits there forever, silently never
 // refreshed, since nothing else here would ever notice or re-download it.
-function versionMarkerPath(dest: string): string {
-  return `${dest}.version`;
-}
-
 function cachedVersionMatches(dest: string, version: string): boolean {
   if (!present(dest)) return false;
   try {
@@ -276,11 +257,11 @@ await downloadBinary(
       binary: "pandoc",
     },
     "x86_64-apple-darwin": {
-      url: `https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-macOS.zip`,
+      url: `https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-x86_64-macOS.zip`,
       binary: "pandoc",
     },
     "aarch64-apple-darwin": {
-      url: `https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-macOS.zip`,
+      url: `https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-arm64-macOS.zip`,
       binary: "pandoc",
     },
     "x86_64-pc-windows-msvc": {

@@ -88,6 +88,15 @@ jobs:
           cp "$(which ffmpeg)" "src-tauri/binaries/ffmpeg-${TRIPLE}"
           cp "$(which pandoc)" "src-tauri/binaries/pandoc-${TRIPLE}"
 
+      # Tells prepare-sidecars.ts (invoked later via beforeBuildCommand) that
+      # the ffmpeg/pandoc binaries just installed above already satisfy its
+      # version pins, so it doesn't try to re-download them itself.
+      - name: Mark CI-provided sidecar versions (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          bun run mark-sidecar-version.ts ffmpeg
+          bun run mark-sidecar-version.ts pandoc
+
       - name: Install macOS dependencies
         if: startsWith(matrix.platform, 'macos')
         run: |
@@ -98,6 +107,18 @@ jobs:
           cp "$(brew --prefix pandoc)/bin/pandoc" "src-tauri/binaries/pandoc-${TRIPLE}"
           cp "$(brew --prefix typst)/bin/typst" "src-tauri/binaries/typst-${TRIPLE}"
           cp "$(brew --prefix nats-server)/bin/nats-server" "src-tauri/binaries/nats-server-${TRIPLE}"
+
+      # Tells prepare-sidecars.ts (invoked later via beforeBuildCommand) that
+      # the binaries just installed above already satisfy its version pins,
+      # so it doesn't try to re-download them itself.
+      - name: Mark CI-provided sidecar versions (macOS)
+        if: startsWith(matrix.platform, 'macos')
+        run: |
+          bun run mark-sidecar-version.ts ffmpeg
+          bun run mark-sidecar-version.ts pandoc
+          bun run mark-sidecar-version.ts typst
+          bun run mark-sidecar-version.ts nats-server
+          bun run mark-sidecar-version.ts nats-server
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
