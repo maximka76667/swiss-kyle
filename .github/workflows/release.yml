@@ -104,15 +104,58 @@ jobs:
         with:
           workspaces: "./src-tauri -> target"
 
-      - name: Build and release
+      # No tagName/releaseId passed: per tauri-action's own logic, that means
+      # build-only — it skips creating or uploading to a GitHub release
+      # entirely ("No releaseId or tagName provided, skipping all
+      # uploads..."). We upload ourselves below, once the Linux fix step
+      # (which needs to run after the build but before anything is
+      # published) has had a chance to run.
+      - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ steps.version.outputs.version }}
-          releaseName: "Swiss Kyle ${{ steps.version.outputs.version }}"
-          releaseBody: "See the assets below to download and install."
-          releaseDraft: true
-          prerelease: false
           tauriScript: bunx @tauri-apps/cli@^2
           args: ${{ matrix.args }}
+
+      # linuxdeploy's GStreamer-bundling plugin corrupts the bundled typst
+      # binary while patching AppDir binaries for portability (typst is
+      # static-pie, a shape patchelf mishandles — see fix-appimage-typst.ts
+      # for the full explanation). Must run after the AppImage is built but
+      # before it's uploaded as a release asset.
+      - name: Fix AppImage typst sidecar
+        if: matrix.platform == 'ubuntu-22.04'
+        shell: bash
+        run: bun run fix-appimage-typst.ts
+
+      - name: Collect bundle artifacts
+        shell: bash
+        env:
+          RUST_TARGET: ${{ matrix.rust-target }}
+        run: |
+          BUNDLE_DIR="target/release/bundle"
+          if [[ -n "$RUST_TARGET" ]]; then
+            BUNDLE_DIR="target/$RUST_TARGET/release/bundle"
+          fi
+          mkdir -p release-assets
+          find "$BUNDLE_DIR" -maxdepth 2 -type f \( -name '*.AppImage' -o -name '*.deb' -o -name '*.dmg' -o -name '*.exe' \) -exec cp {} release-assets/ \;
+          echo "Collected:"
+          ls -la release-assets
+
+      # Each matrix leg uploads its own assets directly to the same tagged
+      # release — no cross-job artifact passing (and no Actions artifact
+      # storage cost) needed. Concurrent legs race to create the release;
+      # only one wins and the rest fall through to `|| true`, then every
+      # leg uploads its own files regardless of who created it.
+      - name: Publish release assets
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "$VERSION" \
+            --repo "${{ github.repository }}" \
+            --title "Swiss Kyle $VERSION" \
+            --notes "See the assets below to download and install." \
+            --draft || true
+          gh release upload "$VERSION" release-assets/* \
+            --repo "${{ github.repository }}" \
+            --clobber

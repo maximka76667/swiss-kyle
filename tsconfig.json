@@ -7,5 +7,5 @@
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["prepare-sidecars.ts"]
+  "include": ["prepare-sidecars.ts", "fix-appimage-typst.ts"]
 }
