@@ -9,7 +9,48 @@ on:
         type: string
 
 jobs:
+  # Creates the draft release exactly once, before any matrix leg runs.
+  # `gh release create --draft` does NOT dedupe the way a published release
+  # does (drafts aren't tied to a real git tag), so calling it once per
+  # matrix leg previously created 4 separate draft releases and only one
+  # ended up with assets. Matrix legs now only ever upload to this one.
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Compute and validate version
+        id: version
+        shell: bash
+        env:
+          RAW_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          VERSION="${RAW_VERSION#v}"
+          if [[ -z "$VERSION" ]]; then
+            echo "::error::version input is empty" >&2
+            exit 1
+          fi
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+.].*)?$ ]]; then
+            echo "::error::version '$VERSION' is not valid semver (expected e.g. 0.2.0)" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create draft release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "$VERSION" \
+            --repo "${{ github.repository }}" \
+            --title "Swiss Kyle $VERSION" \
+            --notes "See the assets below to download and install." \
+            --draft
+
   release:
+    needs: create-release
     permissions:
       contents: write
     strategy:
@@ -34,27 +75,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Single source of truth for the version: the workflow input, with any
-      # leading 'v' stripped to valid semver. Patch it into tauri.conf.json (which
-      # drives the bundle filenames) and Cargo.toml, and export it so the git tag
-      # and release title below use the exact same string — files, tag, and name
-      # all match. Runs on bash across every matrix OS (Git Bash on Windows);
-      # Node is preinstalled on GitHub runners.
+      # Version was already computed and validated once in create-release;
+      # reuse it here (as the release title/tag) so every matrix leg agrees
+      # on the exact same string. Patch it into tauri.conf.json (which drives
+      # the bundle filenames) and Cargo.toml. Runs on bash across every
+      # matrix OS (Git Bash on Windows); Node is preinstalled on GitHub runners.
       - name: Apply release version
         id: version
         shell: bash
         env:
-          RAW_VERSION: ${{ github.event.inputs.version }}
+          VERSION: ${{ needs.create-release.outputs.version }}
         run: |
-          VERSION="${RAW_VERSION#v}"
-          if [[ -z "$VERSION" ]]; then
-            echo "::error::version input is empty" >&2
-            exit 1
-          fi
-          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+.].*)?$ ]]; then
-            echo "::error::version '$VERSION' is not valid semver (expected e.g. 0.2.0)" >&2
-            exit 1
-          fi
           echo "Releasing $VERSION"
           VERSION="$VERSION" node -e '
             const fs = require("fs");
@@ -88,14 +119,15 @@ jobs:
           cp "$(which ffmpeg)" "src-tauri/binaries/ffmpeg-${TRIPLE}"
           cp "$(which pandoc)" "src-tauri/binaries/pandoc-${TRIPLE}"
 
-      # Tells prepare-sidecars.ts (invoked later via beforeBuildCommand) that
-      # the ffmpeg/pandoc binaries just installed above already satisfy its
-      # version pins, so it doesn't try to re-download them itself.
+      # Verifies the ffmpeg/pandoc binaries just installed above actually
+      # report the version prepare-sidecars.ts pins; if one doesn't match
+      # (e.g. an OS repo shipping a stale package), this downloads the real
+      # pinned build itself instead of trusting the package manager's copy.
       - name: Mark CI-provided sidecar versions (Linux)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
-          bun run mark-sidecar-version.ts ffmpeg
-          bun run mark-sidecar-version.ts pandoc
+          bun run scripts/mark-sidecar-version.ts ffmpeg
+          bun run scripts/mark-sidecar-version.ts pandoc
 
       - name: Install macOS dependencies
         if: startsWith(matrix.platform, 'macos')
@@ -108,17 +140,17 @@ jobs:
           cp "$(brew --prefix typst)/bin/typst" "src-tauri/binaries/typst-${TRIPLE}"
           cp "$(brew --prefix nats-server)/bin/nats-server" "src-tauri/binaries/nats-server-${TRIPLE}"
 
-      # Tells prepare-sidecars.ts (invoked later via beforeBuildCommand) that
-      # the binaries just installed above already satisfy its version pins,
-      # so it doesn't try to re-download them itself.
+      # Verifies the binaries just installed above actually report the
+      # version prepare-sidecars.ts pins; if one doesn't match (e.g. brew
+      # having moved on to a newer release than the pin), this downloads the
+      # real pinned build itself instead of trusting brew's copy.
       - name: Mark CI-provided sidecar versions (macOS)
         if: startsWith(matrix.platform, 'macos')
         run: |
-          bun run mark-sidecar-version.ts ffmpeg
-          bun run mark-sidecar-version.ts pandoc
-          bun run mark-sidecar-version.ts typst
-          bun run mark-sidecar-version.ts nats-server
-          bun run mark-sidecar-version.ts nats-server
+          bun run scripts/mark-sidecar-version.ts ffmpeg
+          bun run scripts/mark-sidecar-version.ts pandoc
+          bun run scripts/mark-sidecar-version.ts typst
+          bun run scripts/mark-sidecar-version.ts nats-server
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -139,13 +171,14 @@ jobs:
 
       # linuxdeploy's GStreamer-bundling plugin corrupts the bundled typst
       # binary while patching AppDir binaries for portability (typst is
-      # static-pie, a shape patchelf mishandles — see fix-appimage-typst.ts
-      # for the full explanation). Must run after the AppImage is built but
-      # before it's uploaded as a release asset.
+      # static-pie, a shape patchelf mishandles — see
+      # scripts/fix-appimage-typst.ts for the full explanation). Must run
+      # after the AppImage is built but before it's uploaded as a release
+      # asset.
       - name: Fix AppImage typst sidecar
         if: matrix.platform == 'ubuntu-22.04'
         shell: bash
-        run: bun run fix-appimage-typst.ts
+        run: bun run scripts/fix-appimage-typst.ts
 
       - name: Collect bundle artifacts
         shell: bash
@@ -161,22 +194,16 @@ jobs:
           echo "Collected:"
           ls -la release-assets
 
-      # Each matrix leg uploads its own assets directly to the same tagged
-      # release — no cross-job artifact passing (and no Actions artifact
-      # storage cost) needed. Concurrent legs race to create the release;
-      # only one wins and the rest fall through to `|| true`, then every
-      # leg uploads its own files regardless of who created it.
+      # The draft release itself was already created once, in create-release,
+      # before this matrix started. Each leg just uploads its own assets to
+      # that single release — no cross-job artifact passing (and no Actions
+      # artifact storage cost) needed.
       - name: Publish release assets
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          gh release create "$VERSION" \
-            --repo "${{ github.repository }}" \
-            --title "Swiss Kyle $VERSION" \
-            --notes "See the assets below to download and install." \
-            --draft || true
           gh release upload "$VERSION" release-assets/* \
             --repo "${{ github.repository }}" \
             --clobber

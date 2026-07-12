@@ -11,8 +11,6 @@
     "skipLibCheck": true
   },
   "include": [
-    "prepare-sidecars.ts",
-    "fix-appimage-typst.ts",
-    "mark-sidecar-version.ts"
+    "scripts/*.ts",
   ]
 }
