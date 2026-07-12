@@ -109,25 +109,33 @@ jobs:
         with:
           targets: ${{ matrix.rust-target }}
 
+      # pandoc is deliberately NOT installed here (unlike ffmpeg): Ubuntu
+      # 22.04's apt repo is frozen at pandoc 2.9.2.1 for the entire life of
+      # this LTS release (security patches only, never a version bump) — over
+      # two years behind the 3.6.3 pin, and missing the typst output writer
+      # (added in pandoc 3.1.2) that md→pdf conversion depends on. That
+      # mismatch is permanent, not a one-off drift, so installing it here
+      # would just mean paying for an apt install AND a redundant download
+      # (via mark-sidecar-version.ts's fallback below) on every single run,
+      # for a binary that's discarded every time. prepare-sidecars.ts's own
+      # beforeBuildCommand downloads the correct pinned pandoc directly.
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf ffmpeg pandoc
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf ffmpeg
           TRIPLE=$(rustc -vV | sed -n 's/host: //p' | tr -d '\r')
           mkdir -p src-tauri/binaries
           cp "$(which ffmpeg)" "src-tauri/binaries/ffmpeg-${TRIPLE}"
-          cp "$(which pandoc)" "src-tauri/binaries/pandoc-${TRIPLE}"
 
-      # Verifies the ffmpeg/pandoc binaries just installed above actually
-      # report the version prepare-sidecars.ts pins; if one doesn't match
-      # (e.g. an OS repo shipping a stale package), this downloads the real
-      # pinned build itself instead of trusting the package manager's copy.
+      # Verifies the ffmpeg binary just installed above actually reports the
+      # version prepare-sidecars.ts pins; if it doesn't match (e.g. an OS
+      # repo shipping a stale package), this downloads the real pinned build
+      # itself instead of trusting the package manager's copy.
       - name: Mark CI-provided sidecar versions (Linux)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           bun run scripts/mark-sidecar-version.ts ffmpeg
-          bun run scripts/mark-sidecar-version.ts pandoc
 
       - name: Install macOS dependencies
         if: startsWith(matrix.platform, 'macos')
