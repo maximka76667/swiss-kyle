@@ -1,112 +1,24 @@
-import { execSync, spawnSync } from "child_process";
+// Shared download machinery + per-tool source-of-truth URLs, used by
+// prepare-sidecars.ts (the normal path: download whatever's missing or
+// stale) and by mark-sidecar-version.ts (the CI fallback path: a
+// package-manager-installed binary didn't match its pin, so download the
+// real one the same way prepare-sidecars.ts would have).
+import { spawnSync } from "child_process";
 import { randomBytes } from "crypto";
-import {
-  copyFileSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from "fs";
+import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
-import { join, resolve } from "path";
+import { join } from "path";
+import {
+  FFMPEG_ASSET_STEM,
+  FFMPEG_TAG,
+  NATS_VERSION,
+  PANDOC_VERSION,
+  PDFCPU_VERSION,
+  TYPST_VERSION,
+  versionMarkerPath,
+} from "./sidecar-versions";
 
-process.chdir(import.meta.dir);
-
-const isWindows = process.platform === "win32";
-const EXT = isWindows ? ".exe" : "";
-
-const rustcOutput = execSync("rustc -vV", { encoding: "utf8" });
-const TRIPLE = rustcOutput.match(/^host:\s*(.+)$/m)![1].trim();
-console.log(`Detected triple: ${TRIPLE}`);
-
-const BIN_DIR = "src-tauri/binaries";
-mkdirSync(BIN_DIR, { recursive: true });
-
-const NATS_VERSION = "2.10.22";
-const PANDOC_VERSION = "3.6.3";
-const TYPST_VERSION = "0.15.0";
-const PDFCPU_VERSION = "0.13.0";
-// BtbN/FFmpeg-Builds' "latest" release tag has a stable, predictable
-// filename (ffmpeg-master-latest-*), which is why it was used originally —
-// but it floats to whatever their CI most recently published, unlike every
-// other tool here. That bit a real release build: a fresh checkout with no
-// locally-cached ffmpeg binary downloaded a then-"latest" build that turned
-// out to be dynamically linked against libavdevice.so.58, without that
-// shared library ever getting bundled alongside it (this script only
-// extracts the `ffmpeg` executable itself) — "error while loading shared
-// libraries: libavdevice.so.58" at runtime, on a machine where that .so
-// isn't installed. Confirmed by direct comparison: the already-working
-// local binary (cached from before this broke) links against nothing but
-// baseline glibc libraries; a fresh "latest" download does not. Pinned to a
-// specific tagged release + FFmpeg version instead, verified to link
-// cleanly the same way. Tagged (non-"latest") releases embed a commit hash
-// in every asset filename, so bumping this pin later means finding the new
-// filename on the releases page, not just editing a version number.
-const FFMPEG_TAG = "autobuild-2026-07-03-13-21";
-const FFMPEG_ASSET_STEM = "ffmpeg-n7.1.5-1-g7d0e842004";
-
-// Kill stale sidecar processes (from a previous run that didn't exit
-// cleanly) that would lock binaries during rebuild. Only kills PIDs read
-// from our own pidfile (written by the app on spawn) after verifying the
-// PID is still running one of our binaries - never guesses by process name,
-// since a name/pattern match can hit unrelated processes (e.g. `pkill -f
-// worker` matching VS Code's own renderer, which carries "worker" in a
-// --service-worker-schemes flag).
-const PID_FILE = join(BIN_DIR, ".sidecar-pids");
-
-function pidBelongsToOurBinaries(pid: number): boolean {
-  const binDir = resolve(BIN_DIR);
-  if (isWindows) {
-    const r = spawnSync(
-      "powershell",
-      ["-NoProfile", "-Command", `(Get-Process -Id ${pid} -ErrorAction SilentlyContinue).Path`],
-      { encoding: "utf8" },
-    );
-    return r.status === 0 && r.stdout.trim().startsWith(binDir);
-  }
-  const r = spawnSync("ps", ["-p", String(pid), "-o", "args="], { encoding: "utf8" });
-  return r.status === 0 && r.stdout.includes(binDir);
-}
-
-function killLeftoverSidecars(): void {
-  let lines: string[];
-  try {
-    lines = readFileSync(PID_FILE, "utf8").split("\n").map((l) => l.trim()).filter(Boolean);
-  } catch {
-    return; // no pidfile, nothing to clean up
-  }
-  for (const line of lines) {
-    const pid = Number(line);
-    if (!pid || !pidBelongsToOurBinaries(pid)) {
-      console.log(`Skipping PID ${line} — no longer verifiable as one of our sidecars`);
-      continue;
-    }
-    console.log(`Killing leftover sidecar process ${pid}`);
-    if (isWindows) {
-      spawnSync("taskkill", ["/PID", String(pid), "/F", "/T"], { stdio: "ignore" });
-    } else {
-      try {
-        process.kill(pid, "SIGTERM");
-      } catch {
-        // already gone, fine
-      }
-    }
-  }
-  rmSync(PID_FILE, { force: true });
-}
-
-killLeftoverSidecars();
-
-// --- Worker (always rebuild) ---
-execSync("cargo build -p swiss-kyle-worker", { stdio: "inherit" });
-copyFileSync(
-  `target/debug/swiss-kyle-worker${EXT}`,
-  `${BIN_DIR}/swiss-kyle-worker-${TRIPLE}${EXT}`,
-);
-
-function present(path: string): boolean {
+export function present(path: string): boolean {
   try {
     return statSync(path).size > 0;
   } catch {
@@ -114,17 +26,12 @@ function present(path: string): boolean {
   }
 }
 
-// Sits next to the binary, e.g. `pandoc-x86_64-unknown-linux-gnu.version`.
 // A version bump (pinned constant changed) needs to actually invalidate a
 // machine's existing cache — `present()` alone only proves *a* file is
 // there, not that it's the file the current pin expects. A stale binary
 // left over from an older pin otherwise sits there forever, silently never
 // refreshed, since nothing else here would ever notice or re-download it.
-function versionMarkerPath(dest: string): string {
-  return `${dest}.version`;
-}
-
-function cachedVersionMatches(dest: string, version: string): boolean {
+export function cachedVersionMatches(dest: string, version: string): boolean {
   if (!present(dest)) return false;
   try {
     return readFileSync(versionMarkerPath(dest), "utf8").trim() === version;
@@ -146,11 +53,7 @@ function findFile(dir: string, name: string): string | null {
   return null;
 }
 
-async function extract(
-  url: string,
-  binaryName: string,
-  dest: string,
-): Promise<void> {
+async function extract(url: string, binaryName: string, dest: string): Promise<void> {
   const tmp = join(tmpdir(), randomBytes(8).toString("hex"));
   mkdirSync(tmp, { recursive: true });
   try {
@@ -162,9 +65,33 @@ async function extract(
     // ~100% CPU, no network connection and no subprocess visible while
     // stuck, never recovering on its own. curl never reproduced this once
     // across many manual re-tests of the same URLs.
-    const downloaded = spawnSync("curl", ["-fL", "-o", archive, url], {
-      stdio: "inherit",
-    });
+    //
+    // Explicit timeouts + retries: this exact download path (curl fetching a
+    // GitHub Releases asset) is also why CI installs some sidecars via
+    // apt/brew instead of calling this directly — those downloads were
+    // observed to occasionally stall in GitHub Actions specifically, for
+    // reasons never root-caused. mark-sidecar-version.ts's mismatch fallback
+    // reintroduces this same download on CI as a rarely-hit path, so a stall
+    // here needs to fail fast and loud instead of silently hanging until
+    // the job's own multi-hour timeout kills it.
+    const downloaded = spawnSync(
+      "curl",
+      [
+        "-fL",
+        "--connect-timeout",
+        "15",
+        "--max-time",
+        "300",
+        "--retry",
+        "2",
+        "--retry-delay",
+        "5",
+        "-o",
+        archive,
+        url,
+      ],
+      { stdio: "inherit" },
+    );
     if (downloaded.status !== 0) throw new Error(`curl failed fetching ${url}`);
     const extracted = spawnSync("tar", ["-xf", archive, "-C", tmp], {
       stdio: "inherit",
@@ -178,34 +105,37 @@ async function extract(
   }
 }
 
-type TripleMap = Partial<Record<string, { url: string; binary: string }>>;
+export type TripleMap = Partial<Record<string, { url: string; binary: string }>>;
 
-async function downloadBinary(
+// Downloads `dest` if it's missing or its version marker doesn't match
+// `version` — a no-op otherwise. This is the one place that decides "is a
+// re-download needed", shared by prepare-sidecars.ts's normal run and by
+// mark-sidecar-version.ts's mismatch fallback.
+export async function downloadBinary(
   dest: string,
   label: string,
   version: string,
   map: TripleMap,
+  triple: string,
 ): Promise<void> {
   if (cachedVersionMatches(dest, version)) {
     console.log(`${label} already present at ${version}, skipping download`);
     return;
   }
-  const entry = map[TRIPLE];
+  const entry = map[triple];
   if (!entry)
     throw new Error(
-      `No ${label} download defined for ${TRIPLE} — place the binary manually at ${dest}`,
+      `No ${label} download defined for ${triple} — place the binary manually at ${dest}`,
     );
   await extract(entry.url, entry.binary, dest);
   writeFileSync(versionMarkerPath(dest), version);
   console.log(`${label} ready at ${dest}`);
 }
 
-// --- nats-server ---
-await downloadBinary(
-  `${BIN_DIR}/nats-server-${TRIPLE}${EXT}`,
-  `nats-server ${NATS_VERSION}`,
-  NATS_VERSION,
-  {
+// One entry per sidecar, keyed the same as SIDECARS in
+// mark-sidecar-version.ts and the tool names used throughout prepare-sidecars.ts.
+export const DOWNLOADS: Record<string, TripleMap> = {
+  "nats-server": {
     "x86_64-unknown-linux-gnu": {
       url: `https://github.com/nats-io/nats-server/releases/download/v${NATS_VERSION}/nats-server-v${NATS_VERSION}-linux-amd64.tar.gz`,
       binary: "nats-server",
@@ -231,42 +161,33 @@ await downloadBinary(
       binary: "nats-server.exe",
     },
   },
-);
-
-// --- ffmpeg ---
-await downloadBinary(`${BIN_DIR}/ffmpeg-${TRIPLE}${EXT}`, `ffmpeg (${FFMPEG_TAG})`, FFMPEG_TAG, {
-  "x86_64-unknown-linux-gnu": {
-    url: `https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_TAG}/${FFMPEG_ASSET_STEM}-linux64-gpl-7.1.tar.xz`,
-    binary: "ffmpeg",
+  ffmpeg: {
+    "x86_64-unknown-linux-gnu": {
+      url: `https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_TAG}/${FFMPEG_ASSET_STEM}-linux64-gpl-7.1.tar.xz`,
+      binary: "ffmpeg",
+    },
+    "aarch64-unknown-linux-gnu": {
+      url: `https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_TAG}/${FFMPEG_ASSET_STEM}-linuxarm64-gpl-7.1.tar.xz`,
+      binary: "ffmpeg",
+    },
+    "x86_64-apple-darwin": {
+      url: "https://evermeet.cx/ffmpeg/getrelease/zip",
+      binary: "ffmpeg",
+    },
+    "aarch64-apple-darwin": {
+      url: "https://evermeet.cx/ffmpeg/getrelease/zip",
+      binary: "ffmpeg",
+    },
+    "x86_64-pc-windows-msvc": {
+      url: `https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_TAG}/${FFMPEG_ASSET_STEM}-win64-gpl-7.1.zip`,
+      binary: "ffmpeg.exe",
+    },
+    "x86_64-pc-windows-gnu": {
+      url: `https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_TAG}/${FFMPEG_ASSET_STEM}-win64-gpl-7.1.zip`,
+      binary: "ffmpeg.exe",
+    },
   },
-  "aarch64-unknown-linux-gnu": {
-    url: `https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_TAG}/${FFMPEG_ASSET_STEM}-linuxarm64-gpl-7.1.tar.xz`,
-    binary: "ffmpeg",
-  },
-  "x86_64-apple-darwin": {
-    url: "https://evermeet.cx/ffmpeg/getrelease/zip",
-    binary: "ffmpeg",
-  },
-  "aarch64-apple-darwin": {
-    url: "https://evermeet.cx/ffmpeg/getrelease/zip",
-    binary: "ffmpeg",
-  },
-  "x86_64-pc-windows-msvc": {
-    url: `https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_TAG}/${FFMPEG_ASSET_STEM}-win64-gpl-7.1.zip`,
-    binary: "ffmpeg.exe",
-  },
-  "x86_64-pc-windows-gnu": {
-    url: `https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_TAG}/${FFMPEG_ASSET_STEM}-win64-gpl-7.1.zip`,
-    binary: "ffmpeg.exe",
-  },
-});
-
-// --- pandoc ---
-await downloadBinary(
-  `${BIN_DIR}/pandoc-${TRIPLE}${EXT}`,
-  `pandoc ${PANDOC_VERSION}`,
-  PANDOC_VERSION,
-  {
+  pandoc: {
     "x86_64-unknown-linux-gnu": {
       url: `https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-linux-amd64.tar.gz`,
       binary: "pandoc",
@@ -276,11 +197,11 @@ await downloadBinary(
       binary: "pandoc",
     },
     "x86_64-apple-darwin": {
-      url: `https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-macOS.zip`,
+      url: `https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-x86_64-macOS.zip`,
       binary: "pandoc",
     },
     "aarch64-apple-darwin": {
-      url: `https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-macOS.zip`,
+      url: `https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-arm64-macOS.zip`,
       binary: "pandoc",
     },
     "x86_64-pc-windows-msvc": {
@@ -292,14 +213,7 @@ await downloadBinary(
       binary: "pandoc.exe",
     },
   },
-);
-
-// --- typst ---
-await downloadBinary(
-  `${BIN_DIR}/typst-${TRIPLE}${EXT}`,
-  `typst ${TYPST_VERSION}`,
-  TYPST_VERSION,
-  {
+  typst: {
     "x86_64-unknown-linux-gnu": {
       url: `https://github.com/typst/typst/releases/download/v${TYPST_VERSION}/typst-x86_64-unknown-linux-musl.tar.xz`,
       binary: "typst",
@@ -325,14 +239,7 @@ await downloadBinary(
       binary: "typst.exe",
     },
   },
-);
-
-// --- pdfcpu ---
-await downloadBinary(
-  `${BIN_DIR}/pdfcpu-${TRIPLE}${EXT}`,
-  `pdfcpu ${PDFCPU_VERSION}`,
-  PDFCPU_VERSION,
-  {
+  pdfcpu: {
     "x86_64-unknown-linux-gnu": {
       url: `https://github.com/pdfcpu/pdfcpu/releases/download/v${PDFCPU_VERSION}/pdfcpu_${PDFCPU_VERSION}_Linux_x86_64.tar.xz`,
       binary: "pdfcpu",
@@ -358,5 +265,4 @@ await downloadBinary(
       binary: "pdfcpu.exe",
     },
   },
-);
-
+};

@@ -3,7 +3,7 @@
 **Type**: issue
 **Summary**: Resolved. `sidecars.spec.ts`'s "kills sidecars when the window is closed normally" test failed reliably on Linux, for two unrelated reasons layered on top of each other: (1) the window-close IPC call can legitimately throw because the session dies before it can reply — not a crash, and expected on this platform; (2) `isProcessRunning("worker")` silently always returned `true` on Linux because it matched kernel `kworker/*` threads, masking whether the real sidecar had actually died.
 **Tags**: #issue #resolved #e2e #linux #wry #flakiness #process-matching
-**Sources**: [[e2e/specs/sidecars.spec.ts]], [[src-tauri/src/lib.rs]], [[crates/worker/Cargo.toml]], [[prepare-sidecars.ts]], [[src-tauri/tauri.conf.json]], [[src-tauri/capabilities/default.json]]
+**Sources**: [[e2e/specs/sidecars.spec.ts]], [[src-tauri/src/lib.rs]], [[crates/worker/Cargo.toml]], [[scripts/prepare-sidecars.ts]], [[src-tauri/tauri.conf.json]], [[src-tauri/capabilities/default.json]]
 **Related**: [[wiki/components/e2e-tests]], [[wiki/issues/webview2-session-crash-on-fast-relaunch]], [[wiki/issues/prepare-sidecars-pkill-broad-match]], [[wiki/issues/e2e-linux-native-click-unreliable]]
 **Last Updated**: 2026-07-10
 
@@ -30,7 +30,7 @@ This is the same *class* of bug as [[wiki/issues/prepare-sidecars-pkill-broad-ma
 Two fixes, both needed:
 
 1. `sidecars.spec.ts`'s close call now catches the expected error shape (`/session terminated without a reply|invalid session id|page crash or hang/i`) and treats it as success, then verifies the actual thing under test — that the sidecars are really gone — instead of failing on the call that triggers the close.
-2. The worker binary/package was renamed from `worker` to `swiss-kyle-worker` (`crates/worker/Cargo.toml`'s package name, `prepare-sidecars.ts`'s build/copy commands, `tauri.conf.json`'s bundled-resources glob, `capabilities/default.json`'s `shell:allow-execute` permission entry, and the `resolve("worker")` call in `lib.rs`), so the e2e process-name match (`isProcessRunning("swiss-kyle-worker")`) can never collide with anything else again — chosen over just tightening the match string (e.g. `"worker-"`, which was already confirmed collision-free) because a distinctive, unambiguous binary name is a strictly stronger guarantee than a substring that merely happens not to collide with what's on this machine today.
+2. The worker binary/package was renamed from `worker` to `swiss-kyle-worker` (`crates/worker/Cargo.toml`'s package name, `scripts/prepare-sidecars.ts`'s build/copy commands, `tauri.conf.json`'s bundled-resources glob, `capabilities/default.json`'s `shell:allow-execute` permission entry, and the `resolve("worker")` call in `lib.rs`), so the e2e process-name match (`isProcessRunning("swiss-kyle-worker")`) can never collide with anything else again — chosen over just tightening the match string (e.g. `"worker-"`, which was already confirmed collision-free) because a distinctive, unambiguous binary name is a strictly stronger guarantee than a substring that merely happens not to collide with what's on this machine today.
 
 An earlier attempt at (2) added an 8-iteration relaunch-stress loop to the test, based on the (by-then-disproven) relaunch-crash theory. It was reverted once the real causes were found — the failure was 100% reproducible on the very first attempt, not a rare race needing many iterations to catch, so the added complexity bought nothing.
 

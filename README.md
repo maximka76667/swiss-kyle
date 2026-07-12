@@ -34,7 +34,7 @@ ui/                   React + Vite frontend (bun)
 src-tauri/            Tauri app shell: lifecycle, sidecar spawning, video server, commands
 crates/shared/        Job types, NATS publisher, shared helpers
 crates/worker/        Worker binary: job consumer + ffmpeg/pandoc/typst/pdfcpu runners
-prepare-sidecars.ts   Builds the worker and downloads pinned sidecar binaries
+scripts/prepare-sidecars.ts   Builds the worker and downloads pinned sidecar binaries
 e2e/                  WebdriverIO + tauri-driver end-to-end tests
 wiki/                 LLM-maintained knowledge base (see CLAUDE.md)
 ```
@@ -48,7 +48,7 @@ bun install
 bun tauri dev
 ```
 
-The dev command first runs `prepare-sidecars.ts`, which builds the worker crate and downloads sidecar binaries into `src-tauri/binaries/` — pinned versions of nats-server, pandoc, typst, and pdfcpu, plus the latest ffmpeg build. The first run is slow; afterwards the downloads are cached.
+The dev command first runs `scripts/prepare-sidecars.ts`, which builds the worker crate and downloads sidecar binaries into `src-tauri/binaries/` — pinned versions of nats-server, pandoc, typst, and pdfcpu, plus the latest ffmpeg build. The first run is slow; afterwards the downloads are cached.
 
 On Windows, if the Vite dev port is blocked after a reboot, see [WINDOWS-DEV.md](WINDOWS-DEV.md).
 

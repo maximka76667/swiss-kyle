@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "bun ../prepare-sidecars.ts && cargo build --manifest-path ../src-tauri/Cargo.toml && wdio run ./wdio.conf.ts",
+    "test": "bun ../scripts/prepare-sidecars.ts && cargo build --manifest-path ../src-tauri/Cargo.toml && wdio run ./wdio.conf.ts",
     "test:repeat": "bun repeat.ts"
   },
   "devDependencies": {

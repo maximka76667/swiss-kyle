@@ -13,7 +13,7 @@
 
 The system processes media jobs entirely on the user's machine, with no server and no internet dependency. A Tauri desktop app is the single point of contact with the user's filesystem; it submits jobs to a local NATS JetStream queue; one or more worker sidecars pull jobs and run them through ffmpeg (Cut Video) or the document converter (Doc Converter). Status events flow back through NATS to the Tauri app, which forwards them as Tauri events to the frontend.
 
-All binaries (nats-server, worker, ffmpeg, pandoc, typst, pdfcpu) are bundled via `tauri.conf.json`'s `bundle.resources` into a private per-app directory (not `bundle.externalBin`, which would place them in a shared system path — → [[wiki/decisions/adr-004-private-sidecar-resources]]), prepared by `prepare-sidecars.ts` (run via `bun` in Tauri's `beforeDev`/`beforeBuild` hooks) for the host's Rust target triple. It supports Linux (x86_64/aarch64), macOS (x86_64/aarch64), and Windows (msvc/gnu) — the app is cross-platform (→ [[wiki/components/tauri-app]]).
+All binaries (nats-server, worker, ffmpeg, pandoc, typst, pdfcpu) are bundled via `tauri.conf.json`'s `bundle.resources` into a private per-app directory (not `bundle.externalBin`, which would place them in a shared system path — → [[wiki/decisions/adr-004-private-sidecar-resources]]), prepared by `scripts/prepare-sidecars.ts` (run via `bun` in Tauri's `beforeDev`/`beforeBuild` hooks) for the host's Rust target triple. It supports Linux (x86_64/aarch64), macOS (x86_64/aarch64), and Windows (msvc/gnu) — the app is cross-platform (→ [[wiki/components/tauri-app]]).
 
 ## Details
 

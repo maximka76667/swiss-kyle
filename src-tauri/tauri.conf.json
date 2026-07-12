@@ -6,8 +6,8 @@
   "build": {
     "frontendDist": "../ui/dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "bun run prepare-sidecars.ts && cd ui && bun install && bun dev",
-    "beforeBuildCommand": "bun run prepare-sidecars.ts && cd ui && bun install && bun run build"
+    "beforeDevCommand": "bun run scripts/prepare-sidecars.ts && cd ui && bun install && bun dev",
+    "beforeBuildCommand": "bun run scripts/prepare-sidecars.ts && cd ui && bun install && bun run build"
   },
   "app": {
     "windows": [
