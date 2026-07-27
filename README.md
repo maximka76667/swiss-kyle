@@ -30,13 +30,13 @@ Video preview is served by a localhost HTTP server that only streams files regis
 ## Repo layout
 
 ```
-ui/                   React + Vite frontend (bun)
-src-tauri/            Tauri app shell: lifecycle, sidecar spawning, video server, commands
-crates/shared/        Job types, NATS publisher, shared helpers
-crates/worker/        Worker binary: job consumer + ffmpeg/pandoc/typst/pdfcpu runners
+ui/                           React + Vite frontend (bun)
+src-tauri/                    Tauri app shell: lifecycle, sidecar spawning, video server, commands
+crates/shared/                Job types, NATS publisher, shared helpers
+crates/worker/                Worker binary: job consumer + ffmpeg/pandoc/typst/pdfcpu runners
 scripts/prepare-sidecars.ts   Builds the worker and downloads pinned sidecar binaries
-e2e/                  WebdriverIO + tauri-driver end-to-end tests
-wiki/                 LLM-maintained knowledge base (see CLAUDE.md)
+e2e/                          WebdriverIO + tauri-driver end-to-end tests
+wiki/                         LLM-maintained knowledge base (see CLAUDE.md)
 ```
 
 ## Development
