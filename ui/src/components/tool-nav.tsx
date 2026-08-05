@@ -13,6 +13,7 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const TOOLS: { path: string; label: string; icon: React.ElementType }[] = [
   { path: "/cut-video", label: "Cut Video", icon: Scissors },
@@ -68,6 +69,7 @@ export function ToolNav() {
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
+          <ThemeToggle />
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
