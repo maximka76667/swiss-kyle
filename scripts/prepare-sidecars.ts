@@ -1,14 +1,8 @@
 import { execSync, spawnSync } from "child_process";
 import { copyFileSync, mkdirSync, readFileSync, rmSync } from "fs";
 import { join, resolve } from "path";
-import { DOWNLOADS, downloadBinary } from "./sidecar-downloads";
-import {
-  FFMPEG_TAG,
-  NATS_VERSION,
-  PANDOC_VERSION,
-  PDFCPU_VERSION,
-  TYPST_VERSION,
-} from "./sidecar-versions";
+import { DOWNLOADS, downloadBinary, downloadFfmpeg } from "./sidecar-downloads";
+import { NATS_VERSION, PANDOC_VERSION, PDFCPU_VERSION, TYPST_VERSION } from "./sidecar-versions";
 
 // This script lives in scripts/, but all its paths (src-tauri/binaries/...)
 // are relative to the repo root, one level up — chdir there so it behaves
@@ -95,13 +89,7 @@ await downloadBinary(
 );
 
 // --- ffmpeg ---
-await downloadBinary(
-  `${BIN_DIR}/ffmpeg-${TRIPLE}${EXT}`,
-  `ffmpeg (${FFMPEG_TAG})`,
-  FFMPEG_TAG,
-  DOWNLOADS.ffmpeg,
-  TRIPLE,
-);
+await downloadFfmpeg(`${BIN_DIR}/ffmpeg-${TRIPLE}${EXT}`, DOWNLOADS.ffmpeg, TRIPLE);
 
 // --- pandoc ---
 await downloadBinary(

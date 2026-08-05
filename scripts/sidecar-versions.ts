@@ -8,10 +8,19 @@ export const NATS_VERSION = "2.10.22";
 export const PANDOC_VERSION = "3.6.3";
 export const TYPST_VERSION = "0.15.0";
 export const PDFCPU_VERSION = "0.13.0";
-// See prepare-sidecars.ts for why this is pinned to a tagged release
-// instead of BtbN/FFmpeg-Builds' floating "latest".
-export const FFMPEG_TAG = "autobuild-2026-07-03-13-21";
-export const FFMPEG_ASSET_STEM = "ffmpeg-n7.1.5-1-g7d0e842004";
+// Deliberately NOT pinned to one of BtbN/FFmpeg-Builds' dated
+// `autobuild-*` releases — those get pruned on a rolling window (the
+// previous pin 404'd once its release aged out). "latest" is a release
+// BtbN keeps updated in place forever under fixed per-branch filenames
+// (e.g. ffmpeg-n7.1-latest-win64-gpl-7.1.zip), so this URL never goes stale.
+// These two are release/asset-name constants, not a version pin — unlike
+// the VERSIONs above, nothing compares a cached ffmpeg binary against
+// FFMPEG_TAG (it would always match, since the string never changes).
+// downloadFfmpeg/mark-sidecar-version.ts record the binary's actual
+// resolved version (from `ffmpeg -version`) in its .version marker instead,
+// purely for diagnostics.
+export const FFMPEG_TAG = "latest";
+export const FFMPEG_ASSET_STEM = "ffmpeg-n7.1-latest";
 
 // Sits next to the binary, e.g. `pandoc-x86_64-unknown-linux-gnu.version`.
 export function versionMarkerPath(dest: string): string {

@@ -28,15 +28,38 @@ pub fn run(
     std::fs::create_dir_all(&output_dir)?;
     let output_path = output_dir.join(&job.output);
 
+    let duration_secs = (job.end_secs - job.start_secs).max(0.001);
+
+    // -c copy can only start the output video on a keyframe, and some
+    // sources (phone recordings in particular seem to vary wildly in GOP
+    // size) space keyframes far enough apart that a short cut can contain
+    // none at all — ffmpeg then silently writes zero video frames while
+    // still copying audio fine, exiting 0 with an audio-only (or empty)
+    // file. Re-encoding the video stream makes the cut frame-accurate
+    // regardless of keyframe placement; audio has no such constraint and
+    // stays a cheap stream copy. -ss before -i + -t (not -to) is the
+    // standard fast-seek-then-decode-forward idiom: ffmpeg seeks to the
+    // nearest preceding keyframe, decodes forward to the exact requested
+    // start, then encodes exactly `duration_secs` from there.
     let args = [
         "-y".to_string(),
-        "-i".to_string(),
-        job.input.clone(),
         "-ss".to_string(),
         job.start_secs.to_string(),
-        "-to".to_string(),
-        job.end_secs.to_string(),
-        "-c".to_string(),
+        "-i".to_string(),
+        job.input.clone(),
+        "-t".to_string(),
+        duration_secs.to_string(),
+        "-map".to_string(),
+        "0:v:0?".to_string(),
+        "-map".to_string(),
+        "0:a:0?".to_string(),
+        "-c:v".to_string(),
+        "libx264".to_string(),
+        "-preset".to_string(),
+        "veryfast".to_string(),
+        "-crf".to_string(),
+        "18".to_string(),
+        "-c:a".to_string(),
         "copy".to_string(),
         output_path.to_string_lossy().into_owned(),
     ];
@@ -47,7 +70,6 @@ pub fn run(
         .stderr(Stdio::piped())
         .spawn()?;
 
-    let duration_secs = (job.end_secs - job.start_secs).max(0.001);
     let mut stderr = child.stderr.take().expect("stderr was piped");
     let mut line = String::new();
     let mut stderr_buf = String::new();

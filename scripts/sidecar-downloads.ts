@@ -132,6 +132,39 @@ export async function downloadBinary(
   console.log(`${label} ready at ${dest}`);
 }
 
+// `ffmpeg -version`'s first line is e.g. "ffmpeg version
+// n7.1.5-12-g1fdbca85aa Copyright ...". Used only as a diagnostic label —
+// see downloadFfmpeg for why it can't gate re-downloads the way the other
+// sidecars' pinned VERSION constants do.
+export function detectFfmpegVersion(bin: string): string | null {
+  const result = spawnSync(bin, ["-version"], { encoding: "utf8" });
+  if (result.error || result.status !== 0) return null;
+  return result.stdout.match(/ffmpeg version (\S+)/)?.[1] ?? null;
+}
+
+// ffmpeg is intentionally downloaded from BtbN/FFmpeg-Builds' floating
+// "latest" release (see sidecar-versions.ts) instead of a pinned tag, so
+// there is no target version to compare a cached binary against before
+// downloading — unlike downloadBinary above, which redownloads whenever its
+// caller's pinned constant changes. Here "already downloaded" is the only
+// signal available, so that's what gates the skip; delete the binary (or
+// its .version marker) to force a refresh. The marker still gets written
+// after downloading, but purely as a human-readable record of what was
+// actually fetched (via detectFfmpegVersion) — never as a comparison key.
+export async function downloadFfmpeg(dest: string, map: TripleMap, triple: string): Promise<void> {
+  if (present(dest)) {
+    console.log(`ffmpeg already present at ${dest}, skipping download`);
+    return;
+  }
+  const entry = map[triple];
+  if (!entry)
+    throw new Error(`No ffmpeg download defined for ${triple} — place the binary manually at ${dest}`);
+  await extract(entry.url, entry.binary, dest);
+  const version = detectFfmpegVersion(dest) ?? "unknown";
+  writeFileSync(versionMarkerPath(dest), version);
+  console.log(`ffmpeg ready at ${dest} (${version})`);
+}
+
 // One entry per sidecar, keyed the same as SIDECARS in
 // mark-sidecar-version.ts and the tool names used throughout prepare-sidecars.ts.
 export const DOWNLOADS: Record<string, TripleMap> = {
