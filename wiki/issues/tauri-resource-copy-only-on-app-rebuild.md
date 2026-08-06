@@ -15,17 +15,18 @@ While adding an e2e test for real job processing (submit a cut-video job, wait f
 
 ## Details
 
-Diagnosed by isolating the override logic in a throwaway `cargo test -p shared` — it computed the correct redirected path. So the bug wasn't in the logic; it was that the *running* worker process wasn't the one just rebuilt.
+Diagnosed by isolating the override logic in a throwaway `cargo test -p shared` — it computed the correct redirected path. So the bug wasn't in the logic; it was that the _running_ worker process wasn't the one just rebuilt.
 
 `worker` binaries are deployed through two separate steps:
+
 1. `scripts/prepare-sidecars.ts` (invoked by Tauri's `beforeDevCommand`/`beforeBuildCommand`, → [[wiki/components/tauri-app]]) runs `cargo build -p worker` and copies the result to `src-tauri/binaries/worker-<triple>.exe`.
-2. Tauri's own build script (part of the `app` crate's `cargo build`, since `binaries/*` is declared under `bundle.resources` in `tauri.conf.json`) copies *that* file into the actual resource directory the running app resolves and spawns from (`target/debug/bin/` for dev builds).
+2. Tauri's own build script (part of the `app` crate's `cargo build`, since `binaries/*` is declared under `bundle.resources` in `tauri.conf.json`) copies _that_ file into the actual resource directory the running app resolves and spawns from (`target/debug/bin/` for dev builds).
 
 Step 2 only runs when `app` itself gets rebuilt. Running `bun scripts/prepare-sidecars.ts` alone updates step 1's output but leaves step 2's copy (what's actually executed) untouched. Confirmed by comparing timestamps: `target/debug/bin/worker-x86_64-pc-windows-msvc.exe` was days old while `src-tauri/binaries/worker-x86_64-pc-windows-msvc.exe` had just been rebuilt.
 
 ## Decisions & Rationale
 
-Fixed by making the e2e test script fully self-sufficient and correctly ordered: `e2e/package.json`'s `test` script now runs `bun ../scripts/prepare-sidecars.ts && cargo build --manifest-path ../src-tauri/Cargo.toml && wdio run ./wdio.conf.ts` — rebuild worker, *then* rebuild the app (which performs the resource copy), *then* run tests. This guarantees the suite always exercises current code regardless of what a contributor last touched, without requiring them to remember a separate manual build step.
+Fixed by making the e2e test script fully self-sufficient and correctly ordered: `e2e/package.json`'s `test` script now runs `bun ../scripts/prepare-sidecars.ts && cargo build --manifest-path ../src-tauri/Cargo.toml && wdio run ./wdio.conf.ts` — rebuild worker, _then_ rebuild the app (which performs the resource copy), _then_ run tests. This guarantees the suite always exercises current code regardless of what a contributor last touched, without requiring them to remember a separate manual build step.
 
 ## Known Issues / Tech Debt
 

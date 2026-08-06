@@ -10,7 +10,10 @@ describe("doc converter", () => {
     const dropZone = await byText("Drag & drop a document here");
     await dropZone.waitForDisplayed({ timeout: 10000 });
 
-    const unsupportedPath = resolve(import.meta.dirname, "../fixtures/unsupported.txt");
+    const unsupportedPath = resolve(
+      import.meta.dirname,
+      "../fixtures/unsupported.txt",
+    );
     await dropFile(unsupportedPath);
 
     const errorToast = await byText("Not a supported document file");

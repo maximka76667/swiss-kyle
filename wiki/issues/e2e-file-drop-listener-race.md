@@ -23,9 +23,9 @@ getCurrentWebview()
   .then((fn) => { unlisten = fn; });
 ```
 
-`onDragDropEvent()` returns a **Promise** — registering the listener is a real IPC round-trip to the Rust side, not something that completes synchronously with the component's render. The dropzone's "Drag & drop a video here" text renders immediately on mount, well before that promise necessarily resolves. A test (or a real user, if they're fast enough, though a human drag rarely wins this race) that waits only for the dropzone to be *visible* is waiting for the wrong signal — visible DOM and an attached listener are two different kinds of "ready" that happen to usually-but-not-always line up.
+`onDragDropEvent()` returns a **Promise** — registering the listener is a real IPC round-trip to the Rust side, not something that completes synchronously with the component's render. The dropzone's "Drag & drop a video here" text renders immediately on mount, well before that promise necessarily resolves. A test (or a real user, if they're fast enough, though a human drag rarely wins this race) that waits only for the dropzone to be _visible_ is waiting for the wrong signal — visible DOM and an attached listener are two different kinds of "ready" that happen to usually-but-not-always line up.
 
-This is the same *class* of bug as the sidebar-trigger mount race in `jsClick()` (→ [[wiki/issues/e2e-linux-native-click-unreliable]]): DOM-rendered is being used as a stand-in for "the async thing behind it is done," and the two aren't actually coupled. It normally goes unnoticed because the IPC round-trip is fast — but this investigation involved dozens of rapid app relaunches in a short window, which was enough system load to occasionally lose the race and expose it.
+This is the same _class_ of bug as the sidebar-trigger mount race in `jsClick()` (→ [[wiki/issues/e2e-linux-native-click-unreliable]]): DOM-rendered is being used as a stand-in for "the async thing behind it is done," and the two aren't actually coupled. It normally goes unnoticed because the IPC round-trip is fast — but this investigation involved dozens of rapid app relaunches in a short window, which was enough system load to occasionally lose the race and expose it.
 
 ## Decisions & Rationale
 

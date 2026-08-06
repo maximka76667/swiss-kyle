@@ -29,7 +29,12 @@ type WorkerRow = {
 function initialWorkerRows(): Map<number, WorkerRow> {
   const rows = new Map<number, WorkerRow>();
   for (let i = 0; i < WORKER_COUNT; i++) {
-    rows.set(i, { workerId: i, state: "Unknown", timestamp: null, lastSeen: null });
+    rows.set(i, {
+      workerId: i,
+      state: "Unknown",
+      timestamp: null,
+      lastSeen: null,
+    });
   }
   return rows;
 }
@@ -54,7 +59,8 @@ const LOG_LEVEL_CLASS: Record<string, string> = {
 
 function WorkerListRow({ worker, now }: { worker: WorkerRow; now: number }) {
   const unknown = worker.state === "Unknown";
-  const offline = !unknown && now - (worker.lastSeen as number) > OFFLINE_AFTER_MS;
+  const offline =
+    !unknown && now - (worker.lastSeen as number) > OFFLINE_AFTER_MS;
   const isError = typeof worker.state === "object" && "Error" in worker.state;
 
   let label: string;
@@ -85,30 +91,39 @@ function WorkerListRow({ worker, now }: { worker: WorkerRow; now: number }) {
           <span className={cn("h-2 w-2 rounded-full", dotColor)} />
         )}
       </span>
-      <span className="w-20 shrink-0 text-sm font-medium">Worker {worker.workerId}</span>
+      <span className="w-20 shrink-0 text-sm font-medium">
+        Worker {worker.workerId}
+      </span>
       <span
         className={cn(
           "min-w-0 flex-1 truncate text-sm",
-          isError && !offline && !unknown ? "text-red-500" : "text-muted-foreground",
+          isError && !offline && !unknown
+            ? "text-red-500"
+            : "text-muted-foreground",
         )}
         title={label}
       >
         {label}
       </span>
       <span className="shrink-0 text-xs text-muted-foreground">
-        {worker.timestamp ? `last fetched ${formatTime(worker.timestamp)}` : "—"}
+        {worker.timestamp
+          ? `last fetched ${formatTime(worker.timestamp)}`
+          : "—"}
       </span>
     </div>
   );
 }
 
 export function DiagnosticsPage() {
-  const [workers, setWorkers] = useState<Map<number, WorkerRow>>(initialWorkerRows);
+  const [workers, setWorkers] =
+    useState<Map<number, WorkerRow>>(initialWorkerRows);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
-    invoke<LogEntry[]>("get_job_logs").then(setLogs).catch(() => {});
+    invoke<LogEntry[]>("get_job_logs")
+      .then(setLogs)
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -125,7 +140,12 @@ export function DiagnosticsPage() {
       const { worker_id, state, timestamp } = event.payload;
       setWorkers((prev) => {
         const next = new Map(prev);
-        next.set(worker_id, { workerId: worker_id, state, timestamp, lastSeen: Date.now() });
+        next.set(worker_id, {
+          workerId: worker_id,
+          state,
+          timestamp,
+          lastSeen: Date.now(),
+        });
         return next;
       });
     });
@@ -141,7 +161,9 @@ export function DiagnosticsPage() {
     return () => clearInterval(id);
   }, []);
 
-  const workerRows = [...workers.values()].sort((a, b) => a.workerId - b.workerId);
+  const workerRows = [...workers.values()].sort(
+    (a, b) => a.workerId - b.workerId,
+  );
 
   return (
     <div className="flex h-full flex-col gap-6 p-6">
@@ -158,13 +180,20 @@ export function DiagnosticsPage() {
         <h2 className="mb-3 text-base font-semibold">Job Log</h2>
         <div className="min-h-0 flex-1 overflow-hidden rounded-md bg-zinc-950">
           {logs.length === 0 ? (
-            <p className="p-3 font-mono text-xs text-zinc-500">No log entries yet</p>
+            <p className="p-3 font-mono text-xs text-zinc-500">
+              No log entries yet
+            </p>
           ) : (
             <ScrollArea className="h-full">
               <div className="flex flex-col gap-0.5 p-3 font-mono text-xs leading-relaxed">
                 {logs.map((entry, i) => (
-                  <div key={i} className="flex items-start gap-2 whitespace-pre-wrap break-words">
-                    <span className="shrink-0 text-zinc-600">{formatTime(entry.timestamp)}</span>
+                  <div
+                    key={i}
+                    className="flex items-start gap-2 whitespace-pre-wrap break-words"
+                  >
+                    <span className="shrink-0 text-zinc-600">
+                      {formatTime(entry.timestamp)}
+                    </span>
                     <span
                       className={cn(
                         "shrink-0 font-semibold",
@@ -173,10 +202,17 @@ export function DiagnosticsPage() {
                     >
                       [{entry.level.toUpperCase()}]
                     </span>
-                    <span className="shrink-0 text-zinc-500" title={entry.job_id}>
+                    <span
+                      className="shrink-0 text-zinc-500"
+                      title={entry.job_id}
+                    >
                       {entry.job_type}:
                     </span>
-                    <span className={LOG_LEVEL_CLASS[entry.level] ?? "text-zinc-300"}>
+                    <span
+                      className={
+                        LOG_LEVEL_CLASS[entry.level] ?? "text-zinc-300"
+                      }
+                    >
                       {entry.message}
                     </span>
                   </div>

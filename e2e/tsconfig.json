@@ -4,17 +4,9 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": [
-      "node",
-      "@wdio/globals/types",
-      "@wdio/mocha-framework"
-    ],
+    "types": ["node", "@wdio/globals/types", "@wdio/mocha-framework"],
     "strict": true,
     "skipLibCheck": true
   },
-  "include": [
-    "wdio.conf.ts",
-    "repeat.ts",
-    "specs/**/*.ts"
-  ]
+  "include": ["wdio.conf.ts", "repeat.ts", "specs/**/*.ts"]
 }

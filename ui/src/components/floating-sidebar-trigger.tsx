@@ -1,10 +1,10 @@
-import { PanelRightOpen } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { useSidebar } from '@/components/ui/sidebar'
+import { PanelRightOpen } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useSidebar } from "@/components/ui/sidebar";
 
 export function FloatingSidebarTrigger() {
-  const { open, toggleSidebar } = useSidebar()
-  if (open) return null
+  const { open, toggleSidebar } = useSidebar();
+  if (open) return null;
   return (
     <Button
       variant="outline"
@@ -14,5 +14,5 @@ export function FloatingSidebarTrigger() {
     >
       <PanelRightOpen className="h-4 w-4" />
     </Button>
-  )
+  );
 }

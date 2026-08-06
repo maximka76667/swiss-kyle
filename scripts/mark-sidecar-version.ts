@@ -23,8 +23,18 @@
 import { execSync, spawnSync } from "child_process";
 import { writeFileSync } from "fs";
 import { resolve } from "path";
-import { DOWNLOADS, detectFfmpegVersion, downloadBinary, downloadFfmpeg } from "./sidecar-downloads";
-import { NATS_VERSION, PANDOC_VERSION, TYPST_VERSION, versionMarkerPath } from "./sidecar-versions";
+import {
+  DOWNLOADS,
+  detectFfmpegVersion,
+  downloadBinary,
+  downloadFfmpeg,
+} from "./sidecar-downloads";
+import {
+  NATS_VERSION,
+  PANDOC_VERSION,
+  TYPST_VERSION,
+  versionMarkerPath,
+} from "./sidecar-versions";
 
 // This script lives in scripts/, but all its paths (src-tauri/binaries/...)
 // are relative to the repo root, one level up.
@@ -60,9 +70,13 @@ if (name === "ffmpeg") {
   const detected = detectFfmpegVersion(dest);
   if (detected) {
     writeFileSync(versionMarkerPath(dest), detected);
-    console.log(`Marked ${dest} as ffmpeg ${detected} (unverified, no pin to check against).`);
+    console.log(
+      `Marked ${dest} as ffmpeg ${detected} (unverified, no pin to check against).`,
+    );
   } else {
-    console.warn(`${dest} isn't a working ffmpeg binary — downloading BtbN's latest build instead...`);
+    console.warn(
+      `${dest} isn't a working ffmpeg binary — downloading BtbN's latest build instead...`,
+    );
     await downloadFfmpeg(dest, DOWNLOADS.ffmpeg, TRIPLE);
   }
 } else {
@@ -82,14 +96,22 @@ if (name === "ffmpeg") {
     const output = result.error ? "" : result.stdout + result.stderr;
     if (result.status === 0 && output.includes(version)) {
       writeFileSync(versionMarkerPath(dest), version);
-      console.log(`Verified ${dest} reports ${version}; marked as satisfying the pin.`);
+      console.log(
+        `Verified ${dest} reports ${version}; marked as satisfying the pin.`,
+      );
     } else {
       console.warn(
         `Installed ${name} does not match the pin: expected "${version}" to appear in ` +
           `'${dest} --version' output, got:\n${output || result.error}\n` +
           `Downloading the pinned build directly instead of trusting the package manager...`,
       );
-      await downloadBinary(dest, `${name} ${version}`, version, DOWNLOADS[name], TRIPLE);
+      await downloadBinary(
+        dest,
+        `${name} ${version}`,
+        version,
+        DOWNLOADS[name],
+        TRIPLE,
+      );
     }
   }
 }

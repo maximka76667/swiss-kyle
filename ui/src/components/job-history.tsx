@@ -51,7 +51,6 @@ function failureReason(status: TrackedJobStatus): string | null {
   return null;
 }
 
-
 function formatDate(date: Date): string {
   return date.toLocaleString(undefined, {
     month: "short",

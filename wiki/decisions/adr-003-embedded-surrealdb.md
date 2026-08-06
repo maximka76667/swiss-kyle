@@ -25,7 +25,7 @@ Consumption is via a new in-app **Logs page**: a Tauri command queries SurrealDB
 
 Alternative considered: SQLite. More battle-tested for this scale of local store, but rejected because the user explicitly wants to use SurrealDB — that motivation still holds even with the narrower scope.
 
-Alternative considered (and now the actual decision for the *history* question specifically): no persistence for job status/history at all — in-memory only in the frontend. Originally rejected because the design wanted restart-durable history; now accepted, since no concrete need for that durability was ever identified. SurrealDB survives independently of this, repurposed as a diagnostic log rather than a status store.
+Alternative considered (and now the actual decision for the _history_ question specifically): no persistence for job status/history at all — in-memory only in the frontend. Originally rejected because the design wanted restart-durable history; now accepted, since no concrete need for that durability was ever identified. SurrealDB survives independently of this, repurposed as a diagnostic log rather than a status store.
 
 ## Known Issues / Tech Debt
 

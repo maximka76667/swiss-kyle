@@ -33,7 +33,7 @@ Each worker process calls `get_or_create_consumer` with the same name and fetche
 
 ### Persisted config and reconciliation
 
-JetStream stores a durable consumer's config server-side, so `get_or_create_consumer` returns the *existing* consumer unchanged even if the requested config differs. `consumer.rs`'s `ensure_consumer` handles this by reading `consumer_info` and deleting the consumer when the stored `ack_wait`/`max_deliver` don't match, so it gets recreated with current settings. All workers race through this at startup, so creation is retried rather than fatal (→ [[wiki/components/worker]]).
+JetStream stores a durable consumer's config server-side, so `get_or_create_consumer` returns the _existing_ consumer unchanged even if the requested config differs. `consumer.rs`'s `ensure_consumer` handles this by reading `consumer_info` and deleting the consumer when the stored `ack_wait`/`max_deliver` don't match, so it gets recreated with current settings. All workers race through this at startup, so creation is retried rather than fatal (→ [[wiki/components/worker]]).
 
 ### Redelivery: ack_wait + progress heartbeats
 
@@ -45,7 +45,7 @@ Fetching `max_messages(1)` rather than a batch keeps each worker holding at most
 
 ## Known Issues / Tech Debt
 
-A job that fails cleanly (handler returns an error) is acked after publishing `Failed`, so it is not retried — redelivery only covers workers that *crash* mid-job. Clean failures are terminal by design.
+A job that fails cleanly (handler returns an error) is acked after publishing `Failed`, so it is not retried — redelivery only covers workers that _crash_ mid-job. Clean failures are terminal by design.
 
 ## Related
 

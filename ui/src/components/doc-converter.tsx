@@ -46,7 +46,12 @@ function basename(path: string): string {
 }
 
 interface Props {
-  onJobSubmitted: (id: string, tool: Tool, input: string, output: string) => void;
+  onJobSubmitted: (
+    id: string,
+    tool: Tool,
+    input: string,
+    output: string,
+  ) => void;
 }
 
 export function DocConverter({ onJobSubmitted }: Props) {
@@ -63,7 +68,9 @@ export function DocConverter({ onJobSubmitted }: Props) {
     const ext = path.split(".").pop()?.toLowerCase() ?? "";
     if (!(ext in INPUT_EXT_TO_FORMAT)) {
       toast.error(`Not a supported document file: ${basename(path)}`, {
-        description: `Expected one of: ${Object.keys(INPUT_EXT_TO_FORMAT).map((e) => `.${e}`).join(", ")}`,
+        description: `Expected one of: ${Object.keys(INPUT_EXT_TO_FORMAT)
+          .map((e) => `.${e}`)
+          .join(", ")}`,
       });
       return;
     }
@@ -87,7 +94,16 @@ export function DocConverter({ onJobSubmitted }: Props) {
       filters: [
         {
           name: "Documents",
-          extensions: ["md", "markdown", "docx", "doc", "odt", "rtf", "html", "htm"],
+          extensions: [
+            "md",
+            "markdown",
+            "docx",
+            "doc",
+            "odt",
+            "rtf",
+            "html",
+            "htm",
+          ],
         },
       ],
     });
@@ -110,7 +126,12 @@ export function DocConverter({ onJobSubmitted }: Props) {
         toFormat,
         converter: showConverter ? converter : null,
       });
-      onJobSubmitted(id, "doc-converter", inputPath, `${outputStem.trim()}.${toFormat}`);
+      onJobSubmitted(
+        id,
+        "doc-converter",
+        inputPath,
+        `${outputStem.trim()}.${toFormat}`,
+      );
     } catch (e) {
       toast.error(`Failed to submit job: ${e}`);
     }
@@ -142,8 +163,12 @@ export function DocConverter({ onJobSubmitted }: Props) {
             <p className="text-sm font-medium">{basename(inputPath)}</p>
           ) : (
             <div className="text-center">
-              <p className="text-sm text-muted-foreground">Drag & drop a document here</p>
-              <p className="mt-1 text-xs text-muted-foreground">or click to browse</p>
+              <p className="text-sm text-muted-foreground">
+                Drag & drop a document here
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                or click to browse
+              </p>
             </div>
           )}
         </div>
@@ -169,7 +194,9 @@ export function DocConverter({ onJobSubmitted }: Props) {
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 {availableFormats.map((f) => (
-                  <option key={f} value={f}>{FORMAT_LABEL[f]}</option>
+                  <option key={f} value={f}>
+                    {FORMAT_LABEL[f]}
+                  </option>
                 ))}
               </select>
             </div>

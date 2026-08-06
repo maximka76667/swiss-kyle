@@ -20,7 +20,10 @@ describe("cut video", () => {
   });
 
   it("rejects a dropped file with an unsupported extension", async () => {
-    const unsupportedPath = resolve(import.meta.dirname, "../fixtures/unsupported.txt");
+    const unsupportedPath = resolve(
+      import.meta.dirname,
+      "../fixtures/unsupported.txt",
+    );
 
     await dropFile(unsupportedPath);
 

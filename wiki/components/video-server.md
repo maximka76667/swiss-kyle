@@ -53,6 +53,7 @@ File I/O runs in `tokio::task::spawn_blocking` to avoid blocking the async execu
 ## Decisions & Rationale
 
 Using an ephemeral local HTTP server rather than a Tauri custom protocol because:
+
 1. Standard HTTP with range requests is what browsers expect for `<video>` seeking.
 2. Custom protocols in Tauri/WebKitGTK do not relay range headers, so `<video>` seeking broke in practice (→ memory: video-playback-debug).
 3. Binding on `127.0.0.1:0` means no fixed port conflict.

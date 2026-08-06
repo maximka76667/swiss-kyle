@@ -3,14 +3,9 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": [
-      "bun-types",
-      "node"
-    ],
+    "types": ["bun-types", "node"],
     "strict": true,
     "skipLibCheck": true
   },
-  "include": [
-    "scripts/*.ts",
-  ]
+  "include": ["scripts/*.ts"]
 }

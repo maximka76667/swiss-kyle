@@ -1,12 +1,14 @@
 {
   "scripts": {
     "test:unit": "cargo test",
-    "test:e2e": "bun --cwd=e2e run test"
+    "test:e2e": "bun --cwd=e2e run test",
+    "format": "prettier --write ."
   },
   "dependencies": {},
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.3",
     "@types/bun": "^1.3.14",
-    "@types/node": "^26.0.1"
+    "@types/node": "^26.0.1",
+    "prettier": "^3.9.6"
   }
 }

@@ -31,7 +31,7 @@ Run with `bun run test:e2e` from the repo root (`package.json`'s `test:e2e` scri
 
 ### Support helpers (`e2e/support/`)
 
-- **`selectors.ts` — `byText(text)`**: WebdriverIO's `$('=text')`/`$('*=text')` shorthand only means *link text* (exact/partial), and only matches `<a>` elements — it silently never matches a plain `<div>`/`<p>`, so a `waitForDisplayed` on it just polls uselessly until timeout. `byText` instead builds an xpath (`//*[contains(text(), '...')]`) that matches any element by visible text content.
+- **`selectors.ts` — `byText(text)`**: WebdriverIO's `$('=text')`/`$('*=text')` shorthand only means _link text_ (exact/partial), and only matches `<a>` elements — it silently never matches a plain `<div>`/`<p>`, so a `waitForDisplayed` on it just polls uselessly until timeout. `byText` instead builds an xpath (`//*[contains(text(), '...')]`) that matches any element by visible text content.
 - **`drag-drop.ts` — `dropFile(path)`**: there's no real OS drag to script (the file never crosses the OS boundary in a WebDriver session), so this fires the same `tauri://drag-drop` event the WebView2 host emits on a real drop, via `window.__TAURI_INTERNALS__.invoke("plugin:event|emit", { event: "tauri://drag-drop", payload: { paths, position } })`. This reaches the app's real listener (`useFileDrop` → `getCurrentWebview().onDragDropEvent`, → [[wiki/components/frontend]]) identically to a genuine drop. `plugin:event|emit` needs no extra capability — `core:event:default` (bundled in `core:default`) already grants `allow-emit`. Waits for `[data-drop-ready="true"]` before emitting — `useFileDrop`'s listener registration is an async IPC round-trip, not synchronous with the dropzone rendering (→ [[wiki/issues/e2e-file-drop-listener-race]]).
 - **`navigate.ts` — `openTool(label)`**: clicks the sidebar's `[data-slot="sidebar-trigger"]` toggle to expand it, then clicks the tool's label text via `byText`. Needed for any tool other than Cut Video (see App boot state above).
 - **`click.ts` — `jsClick(el)`**: WebdriverIO's native `.click()` (a synthesized OS-level pointer click) doesn't reliably activate elements through `wry`'s Linux backend — confirmed to produce zero successful navigations across repeated runs (→ [[wiki/issues/e2e-linux-native-click-unreliable]]). `jsClick` waits for the element to exist, then dispatches `.click()` directly on the resolved DOM element via `browser.execute()`, sidestepping the broken pointer-coordinate path. Used for the sidebar trigger, nav-item labels, and the "Submit job" button. Windows/WebView2 isn't affected by the underlying bug, but this works there too.
@@ -44,14 +44,14 @@ This is also why `src-tauri/capabilities/default.json` grants `core:window:allow
 
 ### Specs
 
-| File | Covers |
-|---|---|
-| `smoke.spec.ts` | App launches: webview document title populates; native OS window title matches (Windows only — skipped elsewhere, reading it needs a real window manager) |
-| `sidecars.spec.ts` | `nats-server`/`swiss-kyle-worker` processes spawn and accept connections; closing the window kills them (→ [[wiki/components/tauri-app]] shutdown sequence, → [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]] for why the worker binary has that name and not just `worker`) |
-| `cut-video.spec.ts` | Accepts a dropped video (`fixtures/sample.mp4`); rejects an unsupported extension (`fixtures/unsupported.txt`) with a toast; submits a real cut job and waits for "Done" in job history (happy path — real ffmpeg run) |
-| `doc-converter.spec.ts` | Rejects an unsupported extension with a toast |
-| `merge-pdfs.spec.ts` | Rejects a non-PDF drop with a toast |
-| `navigation.spec.ts` | Drives `openTool()` for every tool (Doc Converter, Merge PDFs, Diagnostics, Cut Video) and asserts each one's page-specific marker renders — decoupled from each tool's own drop/validation test, added to catch navigation regressions directly (→ [[wiki/issues/e2e-linux-native-click-unreliable]]) |
+| File                    | Covers                                                                                                                                                                                                                                                                                                 |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `smoke.spec.ts`         | App launches: webview document title populates; native OS window title matches (Windows only — skipped elsewhere, reading it needs a real window manager)                                                                                                                                              |
+| `sidecars.spec.ts`      | `nats-server`/`swiss-kyle-worker` processes spawn and accept connections; closing the window kills them (→ [[wiki/components/tauri-app]] shutdown sequence, → [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]] for why the worker binary has that name and not just `worker`)                 |
+| `cut-video.spec.ts`     | Accepts a dropped video (`fixtures/sample.mp4`); rejects an unsupported extension (`fixtures/unsupported.txt`) with a toast; submits a real cut job and waits for "Done" in job history (happy path — real ffmpeg run)                                                                                 |
+| `doc-converter.spec.ts` | Rejects an unsupported extension with a toast                                                                                                                                                                                                                                                          |
+| `merge-pdfs.spec.ts`    | Rejects a non-PDF drop with a toast                                                                                                                                                                                                                                                                    |
+| `navigation.spec.ts`    | Drives `openTool()` for every tool (Doc Converter, Merge PDFs, Diagnostics, Cut Video) and asserts each one's page-specific marker renders — decoupled from each tool's own drop/validation test, added to catch navigation regressions directly (→ [[wiki/issues/e2e-linux-native-click-unreliable]]) |
 
 ### Output redirection (`.env.development`)
 
@@ -71,7 +71,7 @@ Static input files committed to the repo (small — `sample.mp4` is ~15KB) so th
 
 Chose to simulate the OS-level drag-drop event over IPC rather than mocking `useFileDrop` or the dialog picker, and to drive real IPC commands (`window|close`) directly rather than only clicking UI — the goal is to exercise the app's actual production code paths (the same event, the same Rust-side `RunEvent` handling), not a test double standing in for them.
 
-The native OS "Open File" dialog (`@tauri-apps/plugin-dialog`) is *not* covered — it's a real OS-chrome window outside the WebView's DOM, which `tauri-driver` (WebView-only) cannot see or interact with. Drag-and-drop shares the same downstream validation code, so it stands in as the testable input path.
+The native OS "Open File" dialog (`@tauri-apps/plugin-dialog`) is _not_ covered — it's a real OS-chrome window outside the WebView's DOM, which `tauri-driver` (WebView-only) cannot see or interact with. Drag-and-drop shares the same downstream validation code, so it stands in as the testable input path.
 
 ## Known Issues / Tech Debt
 

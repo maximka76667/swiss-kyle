@@ -11,13 +11,13 @@
 
 ## Overview
 
-Testing a real packaged `.deb`/AppImage build (not `bun tauri dev`) surfaced two bugs at once, both traced back to the same root cause: Tauri's `externalBin`/sidecar mechanism resolves and places binaries *next to the main executable*. For a `.deb` install, that's `/usr/bin` — a shared system directory.
+Testing a real packaged `.deb`/AppImage build (not `bun tauri dev`) surfaced two bugs at once, both traced back to the same root cause: Tauri's `externalBin`/sidecar mechanism resolves and places binaries _next to the main executable_. For a `.deb` install, that's `/usr/bin` — a shared system directory.
 
 ## Details
 
 Two symptoms, one cause:
 
-1. **Packaged builds silently hung on startup.** The app's own `resolve_bin()` was looking for `ffmpeg`/`pandoc`/`typst`/`pdfcpu` under `resource_dir()`, a *different* directory than where `externalBin` actually places them. `resolve_bin` always failed in any packaged build, triggering `fatal()` — but `fatal()`'s dialog didn't render either (→ [[wiki/issues/fatal-dialog-hang-linux]]), so the failure was invisible: just a frozen window.
+1. **Packaged builds silently hung on startup.** The app's own `resolve_bin()` was looking for `ffmpeg`/`pandoc`/`typst`/`pdfcpu` under `resource_dir()`, a _different_ directory than where `externalBin` actually places them. `resolve_bin` always failed in any packaged build, triggering `fatal()` — but `fatal()`'s dialog didn't render either (→ [[wiki/issues/fatal-dialog-hang-linux]]), so the failure was invisible: just a frozen window.
 2. **`dpkg -i` refused to install**, first with "trying to overwrite `/usr/bin/ffmpeg`" (a real `apt`-installed `ffmpeg` package existed), and after that was fixed, the same for `/usr/bin/nats-server` (this machine also had a real `nats-server` apt package — don't assume any bundled tool name is "safe" from collision).
 
 ## Decisions & Rationale

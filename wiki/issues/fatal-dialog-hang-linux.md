@@ -15,12 +15,13 @@
 
 ## Details
 
-`tauri_plugin_dialog`'s default Linux backend (`gtk` feature, wrapping the `rfd` crate's GTK3 implementation) calls into GTK's `MainContext` to display the dialog. `fatal()` is called from inside `setup()`, which runs *before* Tauri's own event loop (`.run()`) has started — there's no active, iterating GTK main loop yet for the dialog to render into, so the call hangs forever.
+`tauri_plugin_dialog`'s default Linux backend (`gtk` feature, wrapping the `rfd` crate's GTK3 implementation) calls into GTK's `MainContext` to display the dialog. `fatal()` is called from inside `setup()`, which runs _before_ Tauri's own event loop (`.run()`) has started — there's no active, iterating GTK main loop yet for the dialog to render into, so the call hangs forever.
 
 This is also a known upstream bug independent of the timing issue: [tauri-apps/plugins-workspace#956](https://github.com/tauri-apps/plugins-workspace/issues/956) ("Any blocking dialog does not display properly when running on Linux"), fixed for later plugin versions by PR #1033, but the `setup()`-timing issue would still cause the same symptom regardless of plugin version.
 
 Confirmed via direct testing (forced `resolve_bin` to fail on purpose, repeatable without a full rebuild):
-- Switching to `rfd` directly (bypassing the Tauri plugin) *also* hung — same underlying cause, not specific to the plugin.
+
+- Switching to `rfd` directly (bypassing the Tauri plugin) _also_ hung — same underlying cause, not specific to the plugin.
 - `zenity --error --text="test"` run directly from a terminal worked fine — proved the machine's GTK stack itself wasn't broken, just this specific in-process-before-the-loop-starts scenario.
 
 ## Decisions & Rationale

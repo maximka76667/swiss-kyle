@@ -48,6 +48,7 @@ Each tool's own `applyFile`/`addPaths` handler — not the drop handler itself �
 ### CutVideo / DocConverter / MergePdfs (tool components)
 
 Each tool has:
+
 - A dashed drop zone (click to open native file picker, or drag-and-drop a file from the OS).
 - Fields and submit button hidden until at least one valid file is selected.
 - On submit: `invoke('submit_cut_job' | 'submit_doc_convert_job' | 'submit_merge_pdfs_job', ...)` returns a job ID; calls `onJobSubmitted(id, tool, input, output)`.
@@ -60,19 +61,22 @@ MergePdfs accepts multiple files (batched drop or multi-select picker), lists th
 
 ### App.tsx — state and event wiring
 
-`App` maintains a `TrackedJob[]` array (in-memory, resets on restart). It listens for `job-status` Tauri events and updates the matching job in place. A status event can arrive *before* `handleJobSubmitted` has registered the job (the worker is fast and `invoke` hasn't resolved yet), so unmatched events are buffered in a `pendingEvents` ref keyed by job id:
+`App` maintains a `TrackedJob[]` array (in-memory, resets on restart). It listens for `job-status` Tauri events and updates the matching job in place. A status event can arrive _before_ `handleJobSubmitted` has registered the job (the worker is fast and `invoke` hasn't resolved yet), so unmatched events are buffered in a `pendingEvents` ref keyed by job id:
 
 ```ts
-listen<JobStatusEvent>('job-status', (event) => {
-  setJobs(prev => {
-    if (!prev.find(j => j.id === event.payload.id)) {
-      pendingEvents.current.set(event.payload.id, event.payload.status) // buffer
-      return prev
+listen<JobStatusEvent>("job-status", (event) => {
+  setJobs((prev) => {
+    if (!prev.find((j) => j.id === event.payload.id)) {
+      pendingEvents.current.set(event.payload.id, event.payload.status); // buffer
+      return prev;
     }
-    return prev.map(job =>
-      job.id === event.payload.id ? { ...job, status: event.payload.status } : job)
-  })
-})
+    return prev.map((job) =>
+      job.id === event.payload.id
+        ? { ...job, status: event.payload.status }
+        : job,
+    );
+  });
+});
 ```
 
 `handleJobSubmitted(id, tool, input, output)` appends a new `TrackedJob`, using any buffered status for that id or `'Submitted'` otherwise. Each tool component passes its own tool identifier (`'cut-video'`, `'doc-converter'`, or `'merge-pdfs'`).
@@ -96,10 +100,21 @@ Both paths are clickable in the tool description (`invoke('open_output_folder', 
 ### Type definitions (`types/jobs.ts`)
 
 ```ts
-export type Tool = 'cut-video' | 'doc-converter' | 'merge-pdfs'
-export type JobStatus = 'Received' | { Processing: { percent: number } } | 'Done' | { Failed: { reason: string } }
-export type TrackedJobStatus = JobStatus | 'Submitted'
-export type TrackedJob = { id: string; tool: Tool; input: string; output: string; status: TrackedJobStatus; submittedAt: Date }
+export type Tool = "cut-video" | "doc-converter" | "merge-pdfs";
+export type JobStatus =
+  | "Received"
+  | { Processing: { percent: number } }
+  | "Done"
+  | { Failed: { reason: string } };
+export type TrackedJobStatus = JobStatus | "Submitted";
+export type TrackedJob = {
+  id: string;
+  tool: Tool;
+  input: string;
+  output: string;
+  status: TrackedJobStatus;
+  submittedAt: Date;
+};
 ```
 
 ## Decisions & Rationale

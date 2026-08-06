@@ -2,7 +2,12 @@ import { execSync, spawnSync } from "child_process";
 import { copyFileSync, mkdirSync, readFileSync, rmSync } from "fs";
 import { join, resolve } from "path";
 import { DOWNLOADS, downloadBinary, downloadFfmpeg } from "./sidecar-downloads";
-import { NATS_VERSION, PANDOC_VERSION, PDFCPU_VERSION, TYPST_VERSION } from "./sidecar-versions";
+import {
+  NATS_VERSION,
+  PANDOC_VERSION,
+  PDFCPU_VERSION,
+  TYPST_VERSION,
+} from "./sidecar-versions";
 
 // This script lives in scripts/, but all its paths (src-tauri/binaries/...)
 // are relative to the repo root, one level up — chdir there so it behaves
@@ -34,31 +39,44 @@ function pidBelongsToOurBinaries(pid: number): boolean {
   if (isWindows) {
     const r = spawnSync(
       "powershell",
-      ["-NoProfile", "-Command", `(Get-Process -Id ${pid} -ErrorAction SilentlyContinue).Path`],
+      [
+        "-NoProfile",
+        "-Command",
+        `(Get-Process -Id ${pid} -ErrorAction SilentlyContinue).Path`,
+      ],
       { encoding: "utf8" },
     );
     return r.status === 0 && r.stdout.trim().startsWith(binDir);
   }
-  const r = spawnSync("ps", ["-p", String(pid), "-o", "args="], { encoding: "utf8" });
+  const r = spawnSync("ps", ["-p", String(pid), "-o", "args="], {
+    encoding: "utf8",
+  });
   return r.status === 0 && r.stdout.includes(binDir);
 }
 
 function killLeftoverSidecars(): void {
   let lines: string[];
   try {
-    lines = readFileSync(PID_FILE, "utf8").split("\n").map((l) => l.trim()).filter(Boolean);
+    lines = readFileSync(PID_FILE, "utf8")
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
   } catch {
     return; // no pidfile, nothing to clean up
   }
   for (const line of lines) {
     const pid = Number(line);
     if (!pid || !pidBelongsToOurBinaries(pid)) {
-      console.log(`Skipping PID ${line} — no longer verifiable as one of our sidecars`);
+      console.log(
+        `Skipping PID ${line} — no longer verifiable as one of our sidecars`,
+      );
       continue;
     }
     console.log(`Killing leftover sidecar process ${pid}`);
     if (isWindows) {
-      spawnSync("taskkill", ["/PID", String(pid), "/F", "/T"], { stdio: "ignore" });
+      spawnSync("taskkill", ["/PID", String(pid), "/F", "/T"], {
+        stdio: "ignore",
+      });
     } else {
       try {
         process.kill(pid, "SIGTERM");
@@ -89,7 +107,11 @@ await downloadBinary(
 );
 
 // --- ffmpeg ---
-await downloadFfmpeg(`${BIN_DIR}/ffmpeg-${TRIPLE}${EXT}`, DOWNLOADS.ffmpeg, TRIPLE);
+await downloadFfmpeg(
+  `${BIN_DIR}/ffmpeg-${TRIPLE}${EXT}`,
+  DOWNLOADS.ffmpeg,
+  TRIPLE,
+);
 
 // --- pandoc ---
 await downloadBinary(

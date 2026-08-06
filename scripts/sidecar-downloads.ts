@@ -5,7 +5,15 @@
 // real one the same way prepare-sidecars.ts would have).
 import { spawnSync } from "child_process";
 import { randomBytes } from "crypto";
-import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "fs";
+import {
+  copyFileSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import {
@@ -53,7 +61,11 @@ function findFile(dir: string, name: string): string | null {
   return null;
 }
 
-async function extract(url: string, binaryName: string, dest: string): Promise<void> {
+async function extract(
+  url: string,
+  binaryName: string,
+  dest: string,
+): Promise<void> {
   const tmp = join(tmpdir(), randomBytes(8).toString("hex"));
   mkdirSync(tmp, { recursive: true });
   try {
@@ -105,7 +117,9 @@ async function extract(url: string, binaryName: string, dest: string): Promise<v
   }
 }
 
-export type TripleMap = Partial<Record<string, { url: string; binary: string }>>;
+export type TripleMap = Partial<
+  Record<string, { url: string; binary: string }>
+>;
 
 // Downloads `dest` if it's missing or its version marker doesn't match
 // `version` — a no-op otherwise. This is the one place that decides "is a
@@ -151,14 +165,20 @@ export function detectFfmpegVersion(bin: string): string | null {
 // its .version marker) to force a refresh. The marker still gets written
 // after downloading, but purely as a human-readable record of what was
 // actually fetched (via detectFfmpegVersion) — never as a comparison key.
-export async function downloadFfmpeg(dest: string, map: TripleMap, triple: string): Promise<void> {
+export async function downloadFfmpeg(
+  dest: string,
+  map: TripleMap,
+  triple: string,
+): Promise<void> {
   if (present(dest)) {
     console.log(`ffmpeg already present at ${dest}, skipping download`);
     return;
   }
   const entry = map[triple];
   if (!entry)
-    throw new Error(`No ffmpeg download defined for ${triple} — place the binary manually at ${dest}`);
+    throw new Error(
+      `No ffmpeg download defined for ${triple} — place the binary manually at ${dest}`,
+    );
   await extract(entry.url, entry.binary, dest);
   const version = detectFfmpegVersion(dest) ?? "unknown";
   writeFileSync(versionMarkerPath(dest), version);

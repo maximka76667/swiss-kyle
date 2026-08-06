@@ -19,7 +19,14 @@ import { CSS } from "@dnd-kit/utilities";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
-import { ChevronDown, ChevronUp, FileText, GripVertical, Upload, X } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  GripVertical,
+  Upload,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,9 +63,23 @@ interface RowProps {
   overlay?: boolean;
 }
 
-function PdfRow({ entry, onRemove, onMoveUp, onMoveDown, canMoveUp, canMoveDown, overlay }: RowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: entry.key, disabled: overlay });
+function PdfRow({
+  entry,
+  onRemove,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
+  overlay,
+}: RowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: entry.key, disabled: overlay });
 
   const style = overlay
     ? undefined
@@ -88,7 +109,9 @@ function PdfRow({ entry, onRemove, onMoveUp, onMoveDown, canMoveUp, canMoveDown,
         <span className="truncate text-sm font-medium" title={entry.path}>
           {basename(entry.path)}
         </span>
-        <span className="text-xs text-muted-foreground">{pageCountLabel(entry.pageCount)}</span>
+        <span className="text-xs text-muted-foreground">
+          {pageCountLabel(entry.pageCount)}
+        </span>
       </div>
       {!overlay && (
         <div className="flex shrink-0 items-center gap-0.5">
@@ -129,7 +152,12 @@ function PdfRow({ entry, onRemove, onMoveUp, onMoveDown, canMoveUp, canMoveDown,
 }
 
 interface Props {
-  onJobSubmitted: (id: string, tool: Tool, input: string, output: string) => void;
+  onJobSubmitted: (
+    id: string,
+    tool: Tool,
+    input: string,
+    output: string,
+  ) => void;
 }
 
 export function MergePdfs({ onJobSubmitted }: Props) {
@@ -168,13 +196,17 @@ export function MergePdfs({ onJobSubmitted }: Props) {
         .catch((e) => {
           console.error("get_pdf_page_count failed:", e);
           setEntries((prev) =>
-            prev.map((e2) => (e2.key === entry.key ? { ...e2, pageCount: "error" } : e2)),
+            prev.map((e2) =>
+              e2.key === entry.key ? { ...e2, pageCount: "error" } : e2,
+            ),
           );
         });
     }
   }
 
-  const { isDragging, ready: dropReady } = useFileDrop((paths) => addPaths(paths));
+  const { isDragging, ready: dropReady } = useFileDrop((paths) =>
+    addPaths(paths),
+  );
 
   async function pickFiles() {
     const paths = await open({
@@ -232,7 +264,12 @@ export function MergePdfs({ onJobSubmitted }: Props) {
         inputs: entries.map((e) => e.path),
         outputStem: outputStem.trim(),
       });
-      onJobSubmitted(id, "merge-pdfs", `${entries.length} PDFs`, `${outputStem.trim()}.pdf`);
+      onJobSubmitted(
+        id,
+        "merge-pdfs",
+        `${entries.length} PDFs`,
+        `${outputStem.trim()}.pdf`,
+      );
     } catch (e) {
       toast.error(`Failed to submit job: ${e}`);
     }
@@ -261,8 +298,12 @@ export function MergePdfs({ onJobSubmitted }: Props) {
         >
           <Upload className="h-6 w-6 text-muted-foreground" />
           <div className="text-center">
-            <p className="text-sm text-muted-foreground">Drag & drop PDFs here</p>
-            <p className="mt-1 text-xs text-muted-foreground">or click to browse — add more anytime</p>
+            <p className="text-sm text-muted-foreground">
+              Drag & drop PDFs here
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              or click to browse — add more anytime
+            </p>
           </div>
         </div>
 
@@ -318,7 +359,11 @@ export function MergePdfs({ onJobSubmitted }: Props) {
               />
             </div>
 
-            <Button type="button" onClick={submit} disabled={entries.length < 2}>
+            <Button
+              type="button"
+              onClick={submit}
+              disabled={entries.length < 2}
+            >
               Merge {entries.length > 0 ? `(${entries.length})` : ""}
             </Button>
           </>

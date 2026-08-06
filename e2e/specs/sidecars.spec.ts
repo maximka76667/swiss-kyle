@@ -90,13 +90,17 @@ describe("sidecars", () => {
     // guaranteed.
     try {
       await browser.execute(() => {
-        return (window as any).__TAURI_INTERNALS__.invoke("plugin:window|close", {
-          label: "main",
-        });
+        return (window as any).__TAURI_INTERNALS__.invoke(
+          "plugin:window|close",
+          {
+            label: "main",
+          },
+        );
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
-      const expected = /session terminated without a reply|invalid session id|page crash or hang/i;
+      const expected =
+        /session terminated without a reply|invalid session id|page crash or hang/i;
       if (!expected.test(message)) throw e;
     }
 

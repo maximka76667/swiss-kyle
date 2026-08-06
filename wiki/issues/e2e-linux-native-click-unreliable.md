@@ -19,9 +19,9 @@ Several theories were investigated and ruled out before finding the real cause:
 
 - **DPI/display-scale mismatch**: ruled out — `gsettings get org.gnome.desktop.interface scaling-factor` returned `0` (unset/1x), and the primary display's DPI (~110) isn't in HiDPI territory.
 - **Window-decoration/title-bar coordinate offset**: ruled out by direct experiment — temporarily setting `"decorations": false` in `tauri.conf.json` and rebuilding produced an identical failure pattern (all 4 `navigation.spec.ts` tests still failed the same way), so the window chrome isn't the source of the offset.
-- **XPath selector resolving to the wrong element**: ruled out — `byText()`'s XPath resolves to the innermost text-holding `<span>`, not its parent `<button>`, but this is the *same* code path on Windows, where it works every time.
+- **XPath selector resolving to the wrong element**: ruled out — `byText()`'s XPath resolves to the innermost text-holding `<span>`, not its parent `<button>`, but this is the _same_ code path on Windows, where it works every time.
 
-What actually distinguishes the platforms: `wry`'s Linux backend doesn't reliably deliver a synthesized OS-level pointer click to these elements at all. A direct comparison — same test, same session — showed native `.click()` producing **zero** successful navigations across two full runs (with and without window decorations), while dispatching `.click()` on the already-resolved DOM element via `browser.execute()` produced successful navigations reliably (confirmed by navigating *away* from and *back to* the default route, which only passes if the click genuinely fired).
+What actually distinguishes the platforms: `wry`'s Linux backend doesn't reliably deliver a synthesized OS-level pointer click to these elements at all. A direct comparison — same test, same session — showed native `.click()` producing **zero** successful navigations across two full runs (with and without window decorations), while dispatching `.click()` on the already-resolved DOM element via `browser.execute()` produced successful navigations reliably (confirmed by navigating _away_ from and _back to_ the default route, which only passes if the click genuinely fired).
 
 ## Decisions & Rationale
 
