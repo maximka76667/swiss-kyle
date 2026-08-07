@@ -25,12 +25,13 @@ import {
   GripVertical,
   X,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@shadcn/components/ui/button";
 import { OutputFolderLink } from "@/components/output-folder-link";
 import { ToolPage } from "@/components/tool-page";
 import { FileDropZone } from "@/components/file-drop-zone";
 import { OutputTitleField } from "@/components/output-title-field";
-import { cn, basename } from "@/lib/utils";
+import { basename } from "@/lib/utils";
+import { cn } from "@shadcn/lib/utils";
 import type { Tool } from "@/types/jobs";
 
 type PdfEntry = {

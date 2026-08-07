@@ -10,7 +10,8 @@
     /* Bundler mode */
     "moduleResolution": "bundler",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@shadcn/*": ["./src/shadcn/*"]
     },
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,

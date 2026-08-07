@@ -1,9 +1,9 @@
 import { FolderOpen, Scissors, ArrowLeftRight, Combine, X } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
+import { Badge } from "@shadcn/components/ui/badge";
+import { Button } from "@shadcn/components/ui/button";
+import { Progress } from "@shadcn/components/ui/progress";
+import { Separator } from "@shadcn/components/ui/separator";
 import {
   SidebarContent,
   SidebarGroup,
@@ -12,7 +12,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar";
+} from "@shadcn/components/ui/sidebar";
 import type { Tool, TrackedJob, TrackedJobStatus } from "@/types/jobs";
 
 const TOOL_ICONS: Record<Tool, React.ElementType> = {

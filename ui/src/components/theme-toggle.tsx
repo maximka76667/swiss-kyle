@@ -1,6 +1,6 @@
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
-import { SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import { SidebarMenuButton, SidebarMenuItem } from "@shadcn/components/ui/sidebar";
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();

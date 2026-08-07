@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { toast } from "sonner";
 import { Upload } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@shadcn/lib/utils";
 import { useFileDrop } from "@/hooks/use-file-drop";
 
 interface ValidationResult {

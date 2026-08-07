@@ -1,6 +1,6 @@
 import { PanelRightOpen } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useSidebar } from "@/components/ui/sidebar";
+import { Button } from "@shadcn/components/ui/button";
+import { useSidebar } from "@shadcn/components/ui/sidebar";
 
 export function FloatingSidebarTrigger() {
   const { open, toggleSidebar } = useSidebar();

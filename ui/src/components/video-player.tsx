@@ -23,14 +23,10 @@ export function VideoPlayer({
   const rangeInitialized = useRef(false);
 
   useEffect(() => {
-    setSrc("");
     invoke<string>("get_stream_url", { path: filePath }).then(setSrc);
   }, [filePath]);
 
   useEffect(() => {
-    setDuration(0);
-    setCurrentTime(0);
-    rangeInitialized.current = false;
     const video = videoRef.current;
     if (!video || !src) return;
 
@@ -66,7 +62,7 @@ export function VideoPlayer({
       video.removeEventListener("timeupdate", onTimeUpdate);
       video.removeEventListener("error", onError);
     };
-  }, [filePath, src]);
+  }, [src]);
 
   // Seek to start when the start handle is moved
   useEffect(() => {

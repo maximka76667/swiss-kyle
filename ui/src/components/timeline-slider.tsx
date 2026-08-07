@@ -30,29 +30,24 @@ export function TimelineSlider({
   const endPct = (endSecs / duration) * 100;
   const playPct = (currentTime / duration) * 100;
 
-  function secsAt(clientX: number): number {
-    const rect = containerRef.current!.getBoundingClientRect();
+  function secsAt(rect: DOMRect, clientX: number): number {
     const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     return Math.round(pct * duration * 10) / 10;
   }
 
-  function makeHandleProps(which: "start" | "end") {
-    return {
-      onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.currentTarget.setPointerCapture(e.pointerId);
-      },
-      onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
-        if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
-        const secs = secsAt(e.clientX);
-        if (which === "start") {
-          onChange(Math.min(secs, endSecs - 0.1), endSecs);
-        } else {
-          onChange(startSecs, Math.max(secs, startSecs + 0.1));
-        }
-      },
-    };
+  function handleHandlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function handlePointerMove(
+    e: React.PointerEvent<HTMLDivElement>,
+    applyChange: (secs: number) => void,
+  ) {
+    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+    const rect = containerRef.current!.getBoundingClientRect();
+    applyChange(secsAt(rect, e.clientX));
   }
 
   return (
@@ -60,7 +55,9 @@ export function TimelineSlider({
       <div
         ref={containerRef}
         className="relative h-12 select-none cursor-pointer"
-        onPointerDown={(e) => onSeek(secsAt(e.clientX))}
+        onPointerDown={(e) =>
+          onSeek(secsAt(e.currentTarget.getBoundingClientRect(), e.clientX))
+        }
       >
         {/* Track */}
         <div className="absolute inset-0 overflow-hidden rounded bg-muted">
@@ -91,7 +88,12 @@ export function TimelineSlider({
         <div
           className="absolute inset-y-0 z-10 flex w-3 cursor-ew-resize items-center justify-center rounded-l bg-primary"
           style={{ left: `${startPct}%`, transform: "translateX(-100%)" }}
-          {...makeHandleProps("start")}
+          onPointerDown={handleHandlePointerDown}
+          onPointerMove={(e) =>
+            handlePointerMove(e, (secs) =>
+              onChange(Math.min(secs, endSecs - 0.1), endSecs),
+            )
+          }
         >
           <div className="h-3 w-px rounded bg-primary-foreground/50" />
         </div>
@@ -100,7 +102,12 @@ export function TimelineSlider({
         <div
           className="absolute inset-y-0 z-10 flex w-3 cursor-ew-resize items-center justify-center rounded-r bg-primary"
           style={{ left: `${endPct}%` }}
-          {...makeHandleProps("end")}
+          onPointerDown={handleHandlePointerDown}
+          onPointerMove={(e) =>
+            handlePointerMove(e, (secs) =>
+              onChange(startSecs, Math.max(secs, startSecs + 0.1)),
+            )
+          }
         >
           <div className="h-3 w-px rounded bg-primary-foreground/50" />
         </div>

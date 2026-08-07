@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@shadcn/components/ui/button";
+import { Input } from "@shadcn/components/ui/input";
+import { Label } from "@shadcn/components/ui/label";
 import { VideoPlayer } from "@/components/video-player";
 import { ToolPage } from "@/components/tool-page";
 import { OutputFolderLink } from "@/components/output-folder-link";
@@ -100,6 +100,7 @@ export function CutVideo({ onJobSubmitted }: Props) {
         {inputPath && (
           <>
             <VideoPlayer
+              key={inputPath}
               filePath={inputPath}
               startSecs={startSecs}
               endSecs={endSecs}

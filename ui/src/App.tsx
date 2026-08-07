@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Routes, Route } from "react-router-dom";
 import { listen } from "@tauri-apps/api/event";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@shadcn/components/ui/tooltip";
 import {
   SidebarProvider,
   SidebarInset,
   Sidebar,
-} from "@/components/ui/sidebar";
+} from "@shadcn/components/ui/sidebar";
 import { ToolNav } from "@/components/tool-nav";
 import { JobHistory } from "@/components/job-history";
 import { CutVideo } from "@/components/cut-video";
@@ -14,7 +14,7 @@ import { DocConverter } from "@/components/doc-converter";
 import { MergePdfs } from "@/components/merge-pdfs";
 import { DiagnosticsPage } from "@/components/diagnostics-page";
 import { FloatingSidebarTrigger } from "@/components/floating-sidebar-trigger";
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "@shadcn/components/ui/sonner";
 import type { JobStatus, JobStatusEvent, Tool, TrackedJob } from "@/types/jobs";
 
 function App() {

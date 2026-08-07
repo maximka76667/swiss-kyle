@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Loader2 } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@shadcn/components/ui/scroll-area";
 import type { LogEntry, WorkerHeartbeat } from "@/types/jobs";
-import { cn } from "@/lib/utils";
+import { cn } from "@shadcn/lib/utils";
 
 // 3x the worker's 5s heartbeat publish interval (crates/worker/src/main.rs
 // WORKER_HEARTBEAT_INTERVAL) — a worker that misses this many ticks in a row
@@ -118,7 +118,7 @@ export function DiagnosticsPage() {
   const [workers, setWorkers] =
     useState<Map<number, WorkerRow>>(initialWorkerRows);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     invoke<LogEntry[]>("get_job_logs")

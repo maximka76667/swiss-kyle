@@ -12,7 +12,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarTrigger,
-} from "@/components/ui/sidebar";
+} from "@shadcn/components/ui/sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const TOOLS: { path: string; label: string; icon: React.ElementType }[] = [
