@@ -6,6 +6,7 @@ Append-only. Claude writes one entry per operation. Do not edit manually.
 
 [2026-06-28] CREATE wiki/issues/user-friendly-process-errors → created: user-friendly-process-errors.md | updated: index.md
 [2026-06-28] UPDATE wiki sweep — stale content removed: system-overview, frontend, worker, cli-publisher, http-api, index
+[2026-08-07] CREATE wiki/issues/shallow-vs-deep-module-audit ← src-tauri/src/{video_server,job_log,commands,lib}.rs, crates/worker/src/{cut_video,merge_pdfs,convert_document}.rs, crates/shared/src/lib.rs, ui/src/hooks/use-file-drop.ts, ui/src/components/{cut-video,doc-converter,merge-pdfs,job-history,video-player}.tsx (Ousterhout-style deep/shallow-module and information-hiding read-through requested by the user, who is reading A Philosophy of Software Design; identified Registry, JobLog, the worker run() functions, and useFileDrop as deep modules, and flagged four open shallow/leaky spots — duplicated file-pick/validate/submit logic across the three tool components, DocFormat/Converter knowledge duplicated between crates/shared and doc-converter.tsx, repeated TrackedJobStatus narrowing across four functions in job-history.tsx, and get_pdf_page_count as a depth outlier among commands.rs's otherwise-thin pass-through commands. Filed as open — no refactoring applied yet, per the user's instruction to review file-by-file themselves) → created: wiki/issues/shallow-vs-deep-module-audit | updated: wiki/index.md
 
 <!-- Format:
 [YYYY-MM-DD] OPERATION source/path → created: [pages] | updated: [pages]

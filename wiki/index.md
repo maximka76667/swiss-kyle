@@ -1,6 +1,6 @@
 # Wiki Index
 
-_Last updated: 2026-07-10_
+_Last updated: 2026-08-07_
 
 ## Architecture
 
@@ -53,3 +53,4 @@ _(empty)_
 - [[wiki/issues/e2e-linux-native-click-unreliable]] — Resolved: native WebDriver pointer clicks don't reliably activate elements via wry's Linux backend; fixed by dispatching `.click()` on the resolved DOM element via `browser.execute()`
 - [[wiki/issues/e2e-file-drop-listener-race]] — Resolved: useFileDrop's listener registration is an async IPC round-trip, not synchronous with render; a drop arriving before it resolves is silently lost
 - [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]] — Resolved: two unrelated Linux bugs in one test — an expected-but-unhandled close-command error, and a kworker-thread substring collision in process-name matching
+- [[wiki/issues/shallow-vs-deep-module-audit]] — Open: Ousterhout deep/shallow-module audit flagging duplicated file-pick logic across tool components, duplicated DocFormat knowledge across the Rust/TS boundary, repeated status-narrowing in job-history.tsx, and a depth outlier in commands.rs

@@ -1,7 +1,7 @@
 use crate::job_log::JobLog;
 use crate::{PdfcpuBin, VideoServer};
 use shared::{
-    base_output_dir, Converter, ConvertDocument, CutVideo, DocFormat, Job, JobEnvelope, LogEntry,
+    base_output_dir, ConvertDocument, Converter, CutVideo, DocFormat, Job, JobEnvelope, LogEntry,
     MergePdfs, Publisher,
 };
 
@@ -9,7 +9,9 @@ use shared::{
 /// embedded SurrealDB log (→ wiki/decisions/adr-003-embedded-surrealdb.md) —
 /// job history/status itself is not persisted, only this best-effort log.
 #[tauri::command]
-pub(crate) async fn get_job_logs(job_log: tauri::State<'_, JobLog>) -> Result<Vec<LogEntry>, String> {
+pub(crate) async fn get_job_logs(
+    job_log: tauri::State<'_, JobLog>,
+) -> Result<Vec<LogEntry>, String> {
     job_log.recent_logs().await.map_err(|e| e.to_string())
 }
 
@@ -30,8 +32,17 @@ pub(crate) fn open_output_folder(subfolder: String) -> Result<(), String> {
         shared::output_dir(&subfolder)
     };
     std::fs::create_dir_all(&path).ok();
-    let opener = if cfg!(target_os = "macos") { "open" } else if cfg!(target_os = "windows") { "explorer" } else { "xdg-open" };
-    std::process::Command::new(opener).arg(&path).spawn().map_err(|e| e.to_string())?;
+    let opener = if cfg!(target_os = "macos") {
+        "open"
+    } else if cfg!(target_os = "windows") {
+        "explorer"
+    } else {
+        "xdg-open"
+    };
+    std::process::Command::new(opener)
+        .arg(&path)
+        .spawn()
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -55,7 +66,12 @@ pub(crate) async fn submit_doc_convert_job(
         Some("libreoffice") | None => Some(Converter::LibreOffice),
         Some(other) => return Err(format!("unknown converter: {}", other)),
     };
-    let job = JobEnvelope::new(Job::ConvertDocument(ConvertDocument { input, output_stem, to_format, converter }));
+    let job = JobEnvelope::new(Job::ConvertDocument(ConvertDocument {
+        input,
+        output_stem,
+        to_format,
+        converter,
+    }));
     publisher.publish(&job).await.map_err(|e| e.to_string())?;
     Ok(job.id)
 }
@@ -87,37 +103,24 @@ pub(crate) async fn submit_merge_pdfs_job(
     if inputs.len() < 2 {
         return Err("select at least 2 PDFs to merge".to_string());
     }
-    let job = JobEnvelope::new(Job::MergePdfs(MergePdfs { inputs, output_stem }));
+    let job = JobEnvelope::new(Job::MergePdfs(MergePdfs {
+        inputs,
+        output_stem,
+    }));
     publisher.publish(&job).await.map_err(|e| e.to_string())?;
     Ok(job.id)
 }
 
-/// Reads a PDF's page count via `pdfcpu info --json` for display in the
-/// merge-order picker. pdfcpu has no page-rasterization capability, so this
-/// is the closest thing to a thumbnail we can offer without a second tool.
+/// Reads a PDF's page count for display in the merge-order picker. pdfcpu
+/// has no page-rasterization capability, so this is the closest thing to a
+/// thumbnail we can offer without a second tool.
 #[tauri::command]
 pub(crate) async fn get_pdf_page_count(
     pdfcpu: tauri::State<'_, PdfcpuBin>,
     path: String,
 ) -> Result<u32, String> {
     let bin = pdfcpu.0.clone();
-    tokio::task::spawn_blocking(move || {
-        let output = std::process::Command::new(&bin)
-            .arg("info")
-            .arg("--json")
-            .arg(&path)
-            .output()
-            .map_err(|e| e.to_string())?;
-        if !output.status.success() {
-            return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
-        }
-        let json: serde_json::Value =
-            serde_json::from_slice(&output.stdout).map_err(|e| e.to_string())?;
-        json["infos"][0]["pageCount"]
-            .as_u64()
-            .map(|n| n as u32)
-            .ok_or_else(|| "pageCount missing from pdfcpu output".to_string())
-    })
-    .await
-    .map_err(|e| e.to_string())?
+    tokio::task::spawn_blocking(move || crate::pdfcpu::page_count(&bin, &path))
+        .await
+        .map_err(|e| e.to_string())?
 }

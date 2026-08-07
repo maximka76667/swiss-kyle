@@ -1,5 +1,6 @@
 mod commands;
 mod job_log;
+mod pdfcpu;
 mod video_server;
 
 use futures::StreamExt;
