@@ -37,6 +37,16 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
 
+      # tauri-build's build.rs validates tauri.conf.json's bundle.resources
+      # globs (binaries/swiss-kyle-worker-*, etc.) on ANY compile of
+      # src-tauri — including plain `cargo test` — not just packaging. With
+      # nothing in src-tauri/binaries/ yet, the glob matches zero files and
+      # the build fails before a single test runs. This is self-sufficient:
+      # rebuilds the worker sidecar and downloads the other pinned tool
+      # binaries it doesn't already have, for the host triple.
+      - name: Prepare sidecar binaries
+        run: bun scripts/prepare-sidecars.ts
+
       - name: Run Rust unit tests
         run: bun run test:unit
 
