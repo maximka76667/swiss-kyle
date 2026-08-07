@@ -19,6 +19,7 @@ pub fn run(job: MergePdfs, pdfcpu_bin: &str) -> Result<(), Box<dyn std::error::E
 
     let r = Command::new(pdfcpu_bin)
         .arg("merge")
+        .arg("--force")
         .arg(&output_path)
         .args(&job.inputs)
         .output()?;

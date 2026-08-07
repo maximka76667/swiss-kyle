@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { byText } from "../support/selectors";
 import { dropFile } from "../support/drag-drop";
 import { jsClick } from "../support/click";
+import { countDecodedVideoFrames } from "../support/ffmpeg";
 
 describe("cut video", () => {
   it("accepts a video dropped onto the window", async () => {
@@ -42,5 +43,38 @@ describe("cut video", () => {
     // Job history sidebar is open by default (SidebarProvider's defaultOpen).
     const doneBadge = await byText("Done");
     await doneBadge.waitForDisplayed({ timeout: 20000 });
+  });
+
+  it("keeps the video stream when cutting a real phone-recorded clip", async () => {
+    // This exact clip is what originally surfaced a real bug (fixed in
+    // 8b35908, see cut_video.rs:33-43): phone recordings can space
+    // keyframes far enough apart that a short `-c copy` cut contains none
+    // at all, so ffmpeg wrote an audio-only file and still exited 0 — a
+    // "Done" status can't tell that apart from a real cut, only decoding
+    // the output and counting actual video frames can.
+    const mobilePath = resolve(
+      import.meta.dirname,
+      "../fixtures/phone-sparse-keyframes.mp4",
+    );
+    await dropFile(mobilePath);
+
+    const filenameLabel = await byText("phone-sparse-keyframes.mp4");
+    await filenameLabel.waitForDisplayed({ timeout: 5000 });
+
+    // Fixture is ~4.12s; cut a 1s range well within it.
+    const endSecs = await $("#end-secs");
+    await endSecs.setValue("1");
+
+    const submitButton = await byText("Submit job");
+    await jsClick(submitButton);
+
+    const doneBadge = await byText("Done");
+    await doneBadge.waitForDisplayed({ timeout: 20000 });
+
+    const outputPath = resolve(
+      import.meta.dirname,
+      "../../.development/output/cut-video/phone-sparse-keyframes-cut.mp4",
+    );
+    expect(countDecodedVideoFrames(outputPath)).toBeGreaterThan(0);
   });
 });

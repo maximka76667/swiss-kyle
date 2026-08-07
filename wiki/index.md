@@ -10,7 +10,7 @@ _Last updated: 2026-08-07_
 
 - [[wiki/components/job-types]] — `JobEnvelope`, `Job`/`CutVideo`/`ConvertDocument`, `JobStatus`/`StatusEvent` — all NATS message types
 - [[wiki/components/publisher]] — Shared `Publisher` struct: connects to NATS, durably publishes jobs
-- [[wiki/components/worker]] — Pulls jobs, runs ffmpeg (cut-video) or the document converter, streams progress, publishes StatusEvents
+- [[wiki/components/worker]] — Pulls jobs, runs ffmpeg (cut-video), the document converter, or pdfcpu (merge-pdfs), streams progress, publishes StatusEvents
 - [[wiki/components/tauri-app]] — Sidecar orchestration, Tauri commands, NATS status relay
 - [[wiki/components/video-server]] — Local Axum server streaming videos with HTTP range support, token-gated against arbitrary file access
 - [[wiki/components/frontend]] — React/TS app: three tools (Cut Video, Doc Converter, Merge PDFs), drag-drop, router-based navigation, job history sidebar
@@ -54,3 +54,4 @@ _(empty)_
 - [[wiki/issues/e2e-file-drop-listener-race]] — Resolved: useFileDrop's listener registration is an async IPC round-trip, not synchronous with render; a drop arriving before it resolves is silently lost
 - [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]] — Resolved: two unrelated Linux bugs in one test — an expected-but-unhandled close-command error, and a kworker-thread substring collision in process-name matching
 - [[wiki/issues/shallow-vs-deep-module-audit]] — Open: Ousterhout deep/shallow-module audit flagging duplicated file-pick logic across tool components, duplicated DocFormat knowledge across the Rust/TS boundary, repeated status-narrowing in job-history.tsx, and a depth outlier in commands.rs
+- [[wiki/issues/pdfcpu-merge-refuses-overwrite]] — Resolved: pdfcpu refused to overwrite an existing merge output by default, failing the job on a same-title re-merge; fixed with --force for consistency with cut_video.rs's existing -y overwrite behavior

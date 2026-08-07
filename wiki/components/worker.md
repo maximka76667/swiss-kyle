@@ -1,11 +1,11 @@
 # Worker
 
 **Type**: component
-**Summary**: `crates/worker/` — pulls `JobEnvelope` messages from NATS, dispatches to `cut_video` or `convert_document` modules, publishes `StatusEvent` updates throughout the job lifecycle.
-**Tags**: #component #worker #ffmpeg #pandoc #nats #progress
-**Sources**: [[crates/worker/src/main.rs]], [[crates/worker/src/consumer.rs]], [[crates/worker/src/job.rs]], [[crates/worker/src/cut_video.rs]], [[crates/worker/src/convert_document.rs]], [[crates/worker/src/error.rs]]
-**Related**: [[wiki/components/job-types]], [[wiki/components/publisher]], [[wiki/concepts/jetstream-pull-consumer]], [[wiki/issues/missing-db-and-progress]], [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]]
-**Last Updated**: 2026-07-10
+**Summary**: `crates/worker/` — pulls `JobEnvelope` messages from NATS, dispatches to `cut_video`, `convert_document`, or `merge_pdfs` modules, publishes `StatusEvent` updates throughout the job lifecycle.
+**Tags**: #component #worker #ffmpeg #pandoc #pdfcpu #nats #progress
+**Sources**: [[crates/worker/src/main.rs]], [[crates/worker/src/consumer.rs]], [[crates/worker/src/job.rs]], [[crates/worker/src/cut_video.rs]], [[crates/worker/src/convert_document.rs]], [[crates/worker/src/merge_pdfs.rs]], [[crates/worker/src/error.rs]]
+**Related**: [[wiki/components/job-types]], [[wiki/components/publisher]], [[wiki/concepts/jetstream-pull-consumer]], [[wiki/issues/missing-db-and-progress]], [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]], [[wiki/issues/pdfcpu-merge-refuses-overwrite]]
+**Last Updated**: 2026-08-07
 
 ---
 
@@ -51,11 +51,13 @@ For every job:
 
 ### cut_video.rs
 
-Invokes ffmpeg with stream-copy (no re-encode):
+Invokes ffmpeg with a re-encoded video stream and a copied audio stream:
 
 ```
-ffmpeg -y -i <input> -ss <start> -to <end> -c copy <output>
+ffmpeg -y -ss <start> -i <input> -t <duration> -map 0:v:0? -map 0:a:0? -c:v libx264 -preset veryfast -crf 18 -c:a copy <output>
 ```
+
+This used to be `-c copy` (stream-copy, no re-encode) for both streams. `-c copy` can only start the output on a keyframe, and some sources — phone recordings in particular — space keyframes far enough apart that a short cut can contain none at all; ffmpeg then silently wrote zero video frames while still copying audio fine, exiting 0 with an audio-only (or empty) file. Fixed by always re-encoding the video stream (frame-accurate regardless of keyframe placement) while leaving audio a cheap stream copy, since audio has no equivalent keyframe constraint. `-ss` before `-i` plus `-t` (not `-to`) is the standard fast-seek-then-decode-forward idiom: ffmpeg seeks to the nearest preceding keyframe, decodes forward to the exact requested start, then encodes exactly `-t` from there. Covered by an e2e regression test using a real phone-recorded clip that originally surfaced the bug (→ [[wiki/components/e2e-tests]]).
 
 Reads ffmpeg stderr byte-by-byte (ffmpeg uses `\r` not `\n` for progress). Parses `time=HH:MM:SS.cc` to compute percent and sends it to an unbounded mpsc channel, which a separate tokio task drains and publishes as `StatusEvent`. stderr lines are also accumulated — on non-zero exit, the last 4 non-empty lines are included in the `Failed` reason via `error::process_error`.
 
@@ -67,6 +69,18 @@ Converts between document formats (md/docx/html/pdf). PDF from office files (doc
 
 Output path: `~/Documents/swiss-kyle/convert-document/<output_stem>.<ext>`.
 
+### merge_pdfs.rs
+
+Invokes pdfcpu directly (no progress streaming — merges are fast enough that `Received` → `Done` is the only visible transition):
+
+```
+pdfcpu merge --force <output> <inputs...>
+```
+
+`--force` was added because pdfcpu refuses to overwrite an existing file by default, which meant re-running a merge with an unchanged output title failed the job outright instead of replacing the file — inconsistent with `cut_video.rs`'s `-y` flag, which already overwrites silently. Chosen over a UI confirmation step for consistency with that existing precedent (→ [[wiki/issues/pdfcpu-merge-refuses-overwrite]]). Requires at least 2 inputs (checked both here and in the `submit_merge_pdfs_job` command). On non-zero exit, stderr is passed to `error::process_error`.
+
+Output path: `~/Documents/swiss-kyle/merge-pdfs/<output_stem>.pdf`.
+
 ### error.rs
 
 Shared error formatting for both handlers: takes the last 4 non-empty lines of stderr (avoids the full ffmpeg/pandoc banner) and formats them into a `Box<dyn std::error::Error>`.
@@ -75,9 +89,9 @@ Shared error formatting for both handlers: takes the last 4 non-empty lines of s
 
 A separate tokio task drains the progress channel rather than publishing inline in the stderr-read loop. `publish_status` is async; the ffmpeg stderr loop runs in a blocking thread. The unbounded channel bridges the two.
 
-`-c copy` avoids re-encoding for speed. This means the output container must support the input codec — e.g. a VP8 webm cannot be stream-copied into an mp4. The frontend auto-fills the output extension from the input to prevent this mismatch.
+Video is re-encoded (`-c:v libx264`) rather than stream-copied, trading some speed for a frame-accurate cut regardless of keyframe placement (see cut_video.rs above). Audio stays a stream copy since it has no equivalent keyframe constraint. The frontend still auto-fills the output extension from the input, which now mainly keeps the container format sane rather than guarding a codec-compatibility requirement.
 
-Ack timing uses short `ack_wait` plus progress heartbeats rather than one long `ack_wait`. A flat timeout forces a choice between "slow jobs get stolen" and "crashed jobs recover slowly"; heartbeats decouple the two. Numbers were chosen for this workload: ffmpeg cuts are `-c copy` (seconds), and only LibreOffice/Word conversions are slow, so 30s covers a worker-crash gap while heartbeats protect any longer job.
+Ack timing uses short `ack_wait` plus progress heartbeats rather than one long `ack_wait`. A flat timeout forces a choice between "slow jobs get stolen" and "crashed jobs recover slowly"; heartbeats decouple the two. Numbers were chosen for this workload: ffmpeg cuts stay fast even with re-encoding (`-preset veryfast`, seconds not minutes), and only LibreOffice/Word conversions are slow, so 30s covers a worker-crash gap while heartbeats protect any longer job.
 
 ## Known Issues / Tech Debt
 
@@ -87,4 +101,4 @@ Ack timing uses short `ack_wait` plus progress heartbeats rather than one long `
 
 ## Related
 
-[[wiki/components/job-types]], [[wiki/concepts/jetstream-pull-consumer]], [[wiki/components/tauri-app]], [[wiki/issues/missing-db-and-progress]]
+[[wiki/components/job-types]], [[wiki/concepts/jetstream-pull-consumer]], [[wiki/components/tauri-app]], [[wiki/components/e2e-tests]], [[wiki/issues/missing-db-and-progress]], [[wiki/issues/pdfcpu-merge-refuses-overwrite]]

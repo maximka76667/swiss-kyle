@@ -3,9 +3,9 @@
 **Type**: component
 **Summary**: `src-tauri/src/lib.rs` — the Tauri backend that orchestrates sidecar lifecycle, exposes Tauri commands to the frontend, subscribes to NATS status events, and bridges them to the UI via Tauri events.
 **Tags**: #component #tauri #sidecar #nats
-**Sources**: [[src-tauri/src/lib.rs]], [[src-tauri/Cargo.toml]]
-**Related**: [[wiki/components/job-types]], [[wiki/components/worker]], [[wiki/components/video-server]], [[wiki/components/frontend]], [[wiki/decisions/adr-001-local-only]], [[wiki/decisions/adr-004-private-sidecar-resources]], [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]]
-**Last Updated**: 2026-07-10
+**Sources**: [[src-tauri/src/lib.rs]], [[src-tauri/src/pdfcpu.rs]], [[src-tauri/Cargo.toml]]
+**Related**: [[wiki/components/job-types]], [[wiki/components/worker]], [[wiki/components/video-server]], [[wiki/components/frontend]], [[wiki/decisions/adr-001-local-only]], [[wiki/decisions/adr-004-private-sidecar-resources]], [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]], [[wiki/issues/pdfcpu-merge-refuses-overwrite]]
+**Last Updated**: 2026-08-07
 
 ---
 
@@ -38,7 +38,7 @@ Any resolution/spawn failure at any step calls `fatal()`, which kills already-sp
 | `get_stream_url`         | `(path) → String`                                             | Registers `path` with the video server and returns a token URL to stream it                                                                                                         |
 | `open_output_folder`     | `(subfolder) → Result<()>`                                    | Opens `~/Documents/swiss-kyle/<subfolder>/` in the OS file manager                                                                                                                  |
 
-Commands live in `src-tauri/src/commands.rs` (extracted from `lib.rs`).
+Commands live in `src-tauri/src/commands.rs` (extracted from `lib.rs`). `get_pdf_page_count` itself only wraps `spawn_blocking` around `pdfcpu::page_count(bin, path)` — the actual `pdfcpu info --json` subprocess call and JSON-shape parsing live in `src-tauri/src/pdfcpu.rs`, a small dedicated module in the same style as `video_server::Registry`/`JobLog`, rather than inline in the command handler. It was extracted because it was the one command in `commands.rs` doing real work (subprocess + JSON parsing) behind the same thin `#[tauri::command]` shape as its otherwise-pass-through siblings, which just build a struct and forward to `Publisher::publish`.
 
 ### Shutdown
 

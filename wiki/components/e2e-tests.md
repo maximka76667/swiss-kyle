@@ -3,9 +3,9 @@
 **Type**: component
 **Summary**: `e2e/` — WebdriverIO + `tauri-driver` suite that drives the real, packaged Tauri app (real WebView2, real sidecars) end to end; no mocking layer.
 **Tags**: #component #testing #e2e #webdriverio #tauri
-**Sources**: [[e2e/wdio.conf.ts]], [[e2e/package.json]], [[e2e/repeat.ts]], [[e2e/specs/smoke.spec.ts]], [[e2e/specs/sidecars.spec.ts]], [[e2e/specs/cut-video.spec.ts]], [[e2e/specs/doc-converter.spec.ts]], [[e2e/specs/merge-pdfs.spec.ts]], [[e2e/specs/navigation.spec.ts]], [[e2e/support/selectors.ts]], [[e2e/support/drag-drop.ts]], [[e2e/support/navigate.ts]], [[e2e/support/click.ts]], [[src-tauri/capabilities/default.json]], [[crates/shared/src/lib.rs]], [[ui/src/hooks/use-file-drop.ts]], [[.env.development]]
-**Related**: [[wiki/components/frontend]], [[wiki/components/tauri-app]], [[wiki/issues/e2e-sidecar-leak-across-specs]], [[wiki/issues/tauri-resource-copy-only-on-app-rebuild]], [[wiki/issues/webview2-session-crash-on-fast-relaunch]], [[wiki/issues/e2e-linux-native-click-unreliable]], [[wiki/issues/e2e-file-drop-listener-race]], [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]]
-**Last Updated**: 2026-07-10
+**Sources**: [[e2e/wdio.conf.ts]], [[e2e/package.json]], [[e2e/repeat.ts]], [[e2e/specs/smoke.spec.ts]], [[e2e/specs/sidecars.spec.ts]], [[e2e/specs/cut-video.spec.ts]], [[e2e/specs/doc-converter.spec.ts]], [[e2e/specs/merge-pdfs.spec.ts]], [[e2e/specs/navigation.spec.ts]], [[e2e/support/selectors.ts]], [[e2e/support/drag-drop.ts]], [[e2e/support/navigate.ts]], [[e2e/support/click.ts]], [[e2e/support/ffmpeg.ts]], [[src-tauri/capabilities/default.json]], [[crates/shared/src/lib.rs]], [[ui/src/hooks/use-file-drop.ts]], [[.env.development]]
+**Related**: [[wiki/components/frontend]], [[wiki/components/tauri-app]], [[wiki/components/worker]], [[wiki/issues/e2e-sidecar-leak-across-specs]], [[wiki/issues/tauri-resource-copy-only-on-app-rebuild]], [[wiki/issues/webview2-session-crash-on-fast-relaunch]], [[wiki/issues/e2e-linux-native-click-unreliable]], [[wiki/issues/e2e-file-drop-listener-race]], [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]], [[wiki/issues/pdfcpu-merge-refuses-overwrite]]
+**Last Updated**: 2026-08-07
 
 ---
 
@@ -35,6 +35,7 @@ Run with `bun run test:e2e` from the repo root (`package.json`'s `test:e2e` scri
 - **`drag-drop.ts` — `dropFile(path)`**: there's no real OS drag to script (the file never crosses the OS boundary in a WebDriver session), so this fires the same `tauri://drag-drop` event the WebView2 host emits on a real drop, via `window.__TAURI_INTERNALS__.invoke("plugin:event|emit", { event: "tauri://drag-drop", payload: { paths, position } })`. This reaches the app's real listener (`useFileDrop` → `getCurrentWebview().onDragDropEvent`, → [[wiki/components/frontend]]) identically to a genuine drop. `plugin:event|emit` needs no extra capability — `core:event:default` (bundled in `core:default`) already grants `allow-emit`. Waits for `[data-drop-ready="true"]` before emitting — `useFileDrop`'s listener registration is an async IPC round-trip, not synchronous with the dropzone rendering (→ [[wiki/issues/e2e-file-drop-listener-race]]).
 - **`navigate.ts` — `openTool(label)`**: clicks the sidebar's `[data-slot="sidebar-trigger"]` toggle to expand it, then clicks the tool's label text via `byText`. Needed for any tool other than Cut Video (see App boot state above).
 - **`click.ts` — `jsClick(el)`**: WebdriverIO's native `.click()` (a synthesized OS-level pointer click) doesn't reliably activate elements through `wry`'s Linux backend — confirmed to produce zero successful navigations across repeated runs (→ [[wiki/issues/e2e-linux-native-click-unreliable]]). `jsClick` waits for the element to exist, then dispatches `.click()` directly on the resolved DOM element via `browser.execute()`, sidestepping the broken pointer-coordinate path. Used for the sidebar trigger, nav-item labels, and the "Submit job" button. Windows/WebView2 isn't affected by the underlying bug, but this works there too.
+- **`ffmpeg.ts` — `countDecodedVideoFrames(path)`**: some correctness bugs can't be told apart from success by watching the UI alone — e.g. a video with zero actual video frames (audio-only) still makes ffmpeg exit 0 and the job report `Done`. This runs the bundled `ffmpeg` sidecar (found by scanning `src-tauri/binaries/` for a `ffmpeg-*` entry, not a hardcoded target triple, so it resolves on any platform) to fully decode a file's first video stream to `/dev/null`-equivalent and parses the final `frame=` count from its stderr stats output. Used by `cut-video.spec.ts`'s phone-clip regression test to verify the output actually contains video, not just that the job succeeded.
 
 ### Direct IPC calls without a UI trigger
 
@@ -48,9 +49,9 @@ This is also why `src-tauri/capabilities/default.json` grants `core:window:allow
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `smoke.spec.ts`         | App launches: webview document title populates; native OS window title matches (Windows only — skipped elsewhere, reading it needs a real window manager)                                                                                                                                              |
 | `sidecars.spec.ts`      | `nats-server`/`swiss-kyle-worker` processes spawn and accept connections; closing the window kills them (→ [[wiki/components/tauri-app]] shutdown sequence, → [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]] for why the worker binary has that name and not just `worker`)                 |
-| `cut-video.spec.ts`     | Accepts a dropped video (`fixtures/sample.mp4`); rejects an unsupported extension (`fixtures/unsupported.txt`) with a toast; submits a real cut job and waits for "Done" in job history (happy path — real ffmpeg run)                                                                                 |
+| `cut-video.spec.ts`     | Accepts a dropped video (`fixtures/sample.mp4`); rejects an unsupported extension (`fixtures/unsupported.txt`) with a toast; submits a real cut job and waits for "Done" in job history (happy path — real ffmpeg run); cuts `fixtures/phone-sparse-keyframes.mp4` (the real clip that surfaced the keyframe-spacing bug, → [[wiki/components/worker]] cut_video.rs) and verifies via `countDecodedVideoFrames` that the output actually contains video frames, not just that the job reported `Done` |
 | `doc-converter.spec.ts` | Rejects an unsupported extension with a toast                                                                                                                                                                                                                                                          |
-| `merge-pdfs.spec.ts`    | Rejects a non-PDF drop with a toast                                                                                                                                                                                                                                                                    |
+| `merge-pdfs.spec.ts`    | Rejects a non-PDF drop with a toast; merges two PDFs, resubmits with the same output title but reversed input order via the row list's own reorder control, and asserts the output file's bytes actually changed — regression test for [[wiki/issues/pdfcpu-merge-refuses-overwrite]]              |
 | `navigation.spec.ts`    | Drives `openTool()` for every tool (Doc Converter, Merge PDFs, Diagnostics, Cut Video) and asserts each one's page-specific marker renders — decoupled from each tool's own drop/validation test, added to catch navigation regressions directly (→ [[wiki/issues/e2e-linux-native-click-unreliable]]) |
 
 ### Output redirection (`.env.development`)
@@ -61,7 +62,12 @@ This reads a real file rather than an environment variable because `tauri-driver
 
 ### Fixtures (`e2e/fixtures/`)
 
-Static input files committed to the repo (small — `sample.mp4` is ~15KB) so the suite is reproducible with no external download step: `sample.mp4` (valid video) and `unsupported.txt` (deliberately wrong extension for all three tools' validation tests).
+Static input files committed to the repo so the suite is reproducible with no external download step:
+
+- `sample.mp4` (~15KB) — plain valid video for the cut-video happy path.
+- `unsupported.txt` — deliberately wrong extension for all three tools' validation tests.
+- `phone-sparse-keyframes.mp4` — a real phone-recorded clip with wide keyframe spacing; this is the actual file that originally surfaced the `cut_video.rs` stream-copy bug (→ [[wiki/components/worker]]). Used only by the frame-count regression test, not the plain happy-path test.
+- `sample-a.pdf`, `sample-b.pdf` — small real PDFs (produced by the doc-converter tool itself) used by the merge overwrite regression test. Content is irrelevant to that test beyond being two distinct valid PDFs; page order between them is what makes the before/after byte comparison meaningful.
 
 ### Repeated runs (`e2e/repeat.ts`)
 
