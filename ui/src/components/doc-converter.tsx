@@ -1,15 +1,13 @@
 import { useState } from "react";
-import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
-import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ToolPage } from "@/components/tool-page";
 import { OutputFolderLink } from "@/components/output-folder-link";
-import { cn } from "@/lib/utils";
-import { useFileDrop } from "@/hooks/use-file-drop";
+import { FileDropZone } from "@/components/file-drop-zone";
+import { OutputTitleField } from "@/components/output-title-field";
+import { basename } from "@/lib/utils";
 import type { Tool } from "@/types/jobs";
 
 type DocFormat = "md" | "docx" | "html" | "pdf";
@@ -41,10 +39,6 @@ function outputFormats(inputExt: string): DocFormat[] {
   return all.filter((f) => f !== inputFmt);
 }
 
-function basename(path: string): string {
-  return path.split(/[\\/]/).pop() ?? path;
-}
-
 interface Props {
   onJobSubmitted: (
     id: string,
@@ -66,14 +60,6 @@ export function DocConverter({ onJobSubmitted }: Props) {
 
   function applyFile(path: string) {
     const ext = path.split(".").pop()?.toLowerCase() ?? "";
-    if (!(ext in INPUT_EXT_TO_FORMAT)) {
-      toast.error(`Not a supported document file: ${basename(path)}`, {
-        description: `Expected one of: ${Object.keys(INPUT_EXT_TO_FORMAT)
-          .map((e) => `.${e}`)
-          .join(", ")}`,
-      });
-      return;
-    }
     const stem = basename(path).replace(/\.[^.]+$/, "");
     setInputPath(path);
     setInputExt(ext);
@@ -84,30 +70,21 @@ export function DocConverter({ onJobSubmitted }: Props) {
     }
   }
 
-  const { isDragging, ready: dropReady } = useFileDrop((paths) => {
-    if (paths[0]) applyFile(paths[0]);
-  });
-
-  async function pickFile() {
-    const path = await open({
-      multiple: false,
-      filters: [
-        {
-          name: "Documents",
-          extensions: [
-            "md",
-            "markdown",
-            "docx",
-            "doc",
-            "odt",
-            "rtf",
-            "html",
-            "htm",
-          ],
+  function validate(paths: string[]) {
+    const path = paths[0];
+    const ext = path.split(".").pop()?.toLowerCase() ?? "";
+    if (!(ext in INPUT_EXT_TO_FORMAT)) {
+      return {
+        accepted: [],
+        reject: {
+          message: `Not a supported document file: ${basename(path)}`,
+          description: `Expected one of: ${Object.keys(INPUT_EXT_TO_FORMAT)
+            .map((e) => `.${e}`)
+            .join(", ")}`,
         },
-      ],
-    });
-    if (typeof path === "string") applyFile(path);
+      };
+    }
+    return { accepted: [path] };
   }
 
   async function submit() {
@@ -148,41 +125,26 @@ export function DocConverter({ onJobSubmitted }: Props) {
       }
     >
       <div className="flex flex-col gap-5">
-        <div
-          className={cn(
-            "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-12 transition-colors",
-            isDragging
-              ? "border-primary bg-primary/5"
-              : "border-muted-foreground/30 bg-muted/20 hover:bg-muted/30",
-          )}
-          data-drop-ready={dropReady}
-          onClick={pickFile}
-        >
-          <Upload className="h-8 w-8 text-muted-foreground" />
-          {inputPath ? (
-            <p className="text-sm font-medium">{basename(inputPath)}</p>
-          ) : (
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">
-                Drag & drop a document here
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                or click to browse
-              </p>
-            </div>
-          )}
-        </div>
+        <FileDropZone
+          multiple={false}
+          dialogFilter={{
+            name: "Documents",
+            extensions: Object.keys(INPUT_EXT_TO_FORMAT),
+          }}
+          validate={validate}
+          onFiles={([path]) => applyFile(path)}
+          prompt="Drag & drop a document here"
+          hint="or click to browse"
+          selectedLabel={inputPath ? basename(inputPath) : null}
+        />
 
         {inputPath && (
           <>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="doc-output-stem">Output title</Label>
-              <Input
-                id="doc-output-stem"
-                value={outputStem}
-                onChange={(e) => setOutputStem(e.target.value)}
-              />
-            </div>
+            <OutputTitleField
+              id="doc-output-stem"
+              value={outputStem}
+              onChange={setOutputStem}
+            />
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="doc-to-format">Convert to</Label>

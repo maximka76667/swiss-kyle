@@ -16,7 +16,6 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
 import {
@@ -24,21 +23,15 @@ import {
   ChevronUp,
   FileText,
   GripVertical,
-  Upload,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { OutputFolderLink } from "@/components/output-folder-link";
 import { ToolPage } from "@/components/tool-page";
-import { cn } from "@/lib/utils";
-import { useFileDrop } from "@/hooks/use-file-drop";
+import { FileDropZone } from "@/components/file-drop-zone";
+import { OutputTitleField } from "@/components/output-title-field";
+import { cn, basename } from "@/lib/utils";
 import type { Tool } from "@/types/jobs";
-
-function basename(path: string): string {
-  return path.split(/[\\/]/).pop() ?? path;
-}
 
 type PdfEntry = {
   key: string;
@@ -169,17 +162,23 @@ export function MergePdfs({ onJobSubmitted }: Props) {
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
   );
 
-  function addPaths(paths: string[]) {
+  function validate(paths: string[]) {
     const pdfs = paths.filter((p) => p.toLowerCase().endsWith(".pdf"));
     const rejected = paths.filter((p) => !p.toLowerCase().endsWith(".pdf"));
-    if (rejected.length > 0) {
-      toast.error(
-        rejected.length === 1
-          ? `Not a PDF: ${basename(rejected[0])}`
-          : `${rejected.length} files were not PDFs and were skipped`,
-      );
-    }
-    const fresh: PdfEntry[] = pdfs.map((path) => ({
+    if (rejected.length === 0) return { accepted: pdfs };
+    return {
+      accepted: pdfs,
+      reject: {
+        message:
+          rejected.length === 1
+            ? `Not a PDF: ${basename(rejected[0])}`
+            : `${rejected.length} files were not PDFs and were skipped`,
+      },
+    };
+  }
+
+  function addAcceptedPaths(paths: string[]) {
+    const fresh: PdfEntry[] = paths.map((path) => ({
       key: `${path}-${crypto.randomUUID()}`,
       path,
       pageCount: null,
@@ -202,19 +201,6 @@ export function MergePdfs({ onJobSubmitted }: Props) {
           );
         });
     }
-  }
-
-  const { isDragging, ready: dropReady } = useFileDrop((paths) =>
-    addPaths(paths),
-  );
-
-  async function pickFiles() {
-    const paths = await open({
-      multiple: true,
-      filters: [{ name: "PDF", extensions: ["pdf"] }],
-    });
-    if (Array.isArray(paths)) addPaths(paths);
-    else if (typeof paths === "string") addPaths([paths]);
   }
 
   function removeEntry(key: string) {
@@ -286,26 +272,16 @@ export function MergePdfs({ onJobSubmitted }: Props) {
       }
     >
       <div className="flex flex-col gap-5">
-        <div
-          className={cn(
-            "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-8 transition-colors",
-            isDragging
-              ? "border-primary bg-primary/5"
-              : "border-muted-foreground/30 bg-muted/20 hover:bg-muted/30",
-          )}
-          data-drop-ready={dropReady}
-          onClick={pickFiles}
-        >
-          <Upload className="h-6 w-6 text-muted-foreground" />
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground">
-              Drag & drop PDFs here
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              or click to browse — add more anytime
-            </p>
-          </div>
-        </div>
+        <FileDropZone
+          multiple
+          dialogFilter={{ name: "PDF", extensions: ["pdf"] }}
+          validate={validate}
+          onFiles={addAcceptedPaths}
+          iconClassName="h-6 w-6"
+          className="p-8"
+          prompt="Drag & drop PDFs here"
+          hint="or click to browse — add more anytime"
+        />
 
         {entries.length > 0 && (
           <DndContext
@@ -350,14 +326,11 @@ export function MergePdfs({ onJobSubmitted }: Props) {
 
         {entries.length > 0 && (
           <>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="merge-output-stem">Output title</Label>
-              <Input
-                id="merge-output-stem"
-                value={outputStem}
-                onChange={(e) => setOutputStem(e.target.value)}
-              />
-            </div>
+            <OutputTitleField
+              id="merge-output-stem"
+              value={outputStem}
+              onChange={setOutputStem}
+            />
 
             <Button
               type="button"

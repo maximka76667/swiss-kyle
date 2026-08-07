@@ -65,11 +65,21 @@ describe("cut video", () => {
     const endSecs = await $("#end-secs");
     await endSecs.setValue("1");
 
+    // Not byText("Done"): the previous test already left a "Done" badge in
+    // the job history sidebar, so a plain contains(text(), 'Done') match
+    // resolves against that stale badge instantly instead of waiting for
+    // this job — the test would then read the output file before ffmpeg
+    // finished writing it. Track the count and wait for it to grow instead.
+    const doneCountBefore = await $$("//*[contains(text(), 'Done')]").length;
+
     const submitButton = await byText("Submit job");
     await jsClick(submitButton);
 
-    const doneBadge = await byText("Done");
-    await doneBadge.waitForDisplayed({ timeout: 20000 });
+    await browser.waitUntil(
+      async () =>
+        (await $$("//*[contains(text(), 'Done')]").length) > doneCountBefore,
+      { timeout: 20000, timeoutMsg: "expected the cut job to complete" },
+    );
 
     const outputPath = resolve(
       import.meta.dirname,

@@ -1,16 +1,14 @@
 import { useState } from "react";
-import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
-import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { VideoPlayer } from "@/components/video-player";
 import { ToolPage } from "@/components/tool-page";
 import { OutputFolderLink } from "@/components/output-folder-link";
-import { cn } from "@/lib/utils";
-import { useFileDrop } from "@/hooks/use-file-drop";
+import { FileDropZone } from "@/components/file-drop-zone";
+import { basename } from "@/lib/utils";
 import type { Tool } from "@/types/jobs";
 
 const VIDEO_EXTS = ["mp4", "mov", "mkv", "webm"];
@@ -22,10 +20,6 @@ interface Props {
     input: string,
     output: string,
   ) => void;
-}
-
-function basename(path: string): string {
-  return path.split(/[\\/]/).pop() ?? path;
 }
 
 function extOf(path: string): string {
@@ -40,12 +34,6 @@ export function CutVideo({ onJobSubmitted }: Props) {
 
   function applyFile(path: string) {
     const ext = extOf(path);
-    if (!VIDEO_EXTS.includes(ext)) {
-      toast.error(`Not a supported video file: ${basename(path)}`, {
-        description: `Expected one of: ${VIDEO_EXTS.map((e) => `.${e}`).join(", ")}`,
-      });
-      return;
-    }
     setInputPath(path);
     const filename = basename(path);
     const stem = filename.slice(0, filename.lastIndexOf(".")) || filename;
@@ -54,16 +42,19 @@ export function CutVideo({ onJobSubmitted }: Props) {
     setEndSecs(0);
   }
 
-  const { isDragging, ready: dropReady } = useFileDrop((paths) => {
-    if (paths[0]) applyFile(paths[0]);
-  });
-
-  async function pickFile() {
-    const path = await open({
-      multiple: false,
-      filters: [{ name: "Video", extensions: ["mp4", "mov", "mkv", "webm"] }],
-    });
-    if (typeof path === "string") applyFile(path);
+  function validate(paths: string[]) {
+    const path = paths[0];
+    const ext = extOf(path);
+    if (!VIDEO_EXTS.includes(ext)) {
+      return {
+        accepted: [],
+        reject: {
+          message: `Not a supported video file: ${basename(path)}`,
+          description: `Expected one of: ${VIDEO_EXTS.map((e) => `.${e}`).join(", ")}`,
+        },
+      };
+    }
+    return { accepted: [path] };
   }
 
   async function submit() {
@@ -96,30 +87,15 @@ export function CutVideo({ onJobSubmitted }: Props) {
       }
     >
       <div className="flex flex-col gap-5">
-        <div
-          className={cn(
-            "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-12 transition-colors",
-            isDragging
-              ? "border-primary bg-primary/5"
-              : "border-muted-foreground/30 bg-muted/20 hover:bg-muted/30",
-          )}
-          data-drop-ready={dropReady}
-          onClick={pickFile}
-        >
-          <Upload className="h-8 w-8 text-muted-foreground" />
-          {inputPath ? (
-            <p className="text-sm font-medium">{basename(inputPath)}</p>
-          ) : (
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">
-                Drag & drop a video here
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                or click to browse
-              </p>
-            </div>
-          )}
-        </div>
+        <FileDropZone
+          multiple={false}
+          dialogFilter={{ name: "Video", extensions: VIDEO_EXTS }}
+          validate={validate}
+          onFiles={([path]) => applyFile(path)}
+          prompt="Drag & drop a video here"
+          hint="or click to browse"
+          selectedLabel={inputPath ? basename(inputPath) : null}
+        />
 
         {inputPath && (
           <>
