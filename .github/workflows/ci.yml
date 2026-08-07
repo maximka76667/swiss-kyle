@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      # cargo test compiles the whole workspace, including src-tauri, which
+      # needs these to link on Linux at all (same deps release.yml installs
+      # to build the packaged app) — no test here actually spawns a GUI.
+      # Windows needs nothing extra: WebView2 ships on the runner image.
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+
+      - name: Run Rust unit tests
+        run: bun run test:unit
+
+  frontend:
+    # Pure TS/React, no native deps — nothing here is platform-sensitive,
+    # so this runs once rather than in the OS matrix below.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install frontend dependencies
+        run: bun install
+
+      - name: Typecheck + build
+        run: bun run build
+
+      - name: Lint
+        run: bun run lint
+
+  e2e:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      # webkit2gtk-driver provides WebKitWebDriver, which tauri-driver drives
+      # on Linux; xvfb backs the virtual display wdio's @wdio/xvfb starts
+      # automatically when no real DISPLAY is available (confirmed working
+      # on Linux per wiki/components/e2e-tests.md — 30 consecutive full-suite
+      # runs, 0 failures, once three real Linux-only bugs were fixed there).
+      # Windows needs nothing extra here either: WebView2 ships on the image.
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf webkit2gtk-driver xvfb
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Cache tauri-driver
+        id: cache-tauri-driver
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-bin-tauri-driver
+
+      - name: Install tauri-driver
+        if: steps.cache-tauri-driver.outputs.cache-hit != 'true'
+        run: cargo install tauri-driver
+
+      - name: Install e2e dependencies
+        working-directory: e2e
+        run: bun install
+
+      - name: Install ui dependencies
+        working-directory: ui
+        run: bun install
+
+      # Self-sufficient: rebuilds the worker sidecar, downloads the other
+      # pinned tool binaries (ffmpeg/pandoc/typst/pdfcpu/nats-server) it
+      # doesn't already have, builds the debug app, then runs the suite.
+      - name: Run e2e suite
+        run: bun run test:e2e
