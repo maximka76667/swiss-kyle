@@ -17,7 +17,6 @@ import {
 import { tmpdir } from "os";
 import { join } from "path";
 import {
-  FFMPEG_ASSET_STEM,
   FFMPEG_TAG,
   NATS_VERSION,
   PANDOC_VERSION,
@@ -62,14 +61,15 @@ function findFile(dir: string, name: string): string | null {
 }
 
 async function extract(
-  url: string,
+  url: string | (() => Promise<string>),
   binaryName: string,
   dest: string,
 ): Promise<void> {
+  const resolvedUrl = typeof url === "function" ? await url() : url;
   const tmp = join(tmpdir(), randomBytes(8).toString("hex"));
   mkdirSync(tmp, { recursive: true });
   try {
-    console.log(`Downloading ${url.split("/").pop()}...`);
+    console.log(`Downloading ${resolvedUrl.split("/").pop()}...`);
     const archive = join(tmp, "archive");
     // curl, not fetch()+Bun.write() — Bun's fetch hung indefinitely and
     // reproducibly (confirmed 3 separate times, on two different files) part
@@ -100,11 +100,12 @@ async function extract(
         "5",
         "-o",
         archive,
-        url,
+        resolvedUrl,
       ],
       { stdio: "inherit" },
     );
-    if (downloaded.status !== 0) throw new Error(`curl failed fetching ${url}`);
+    if (downloaded.status !== 0)
+      throw new Error(`curl failed fetching ${resolvedUrl}`);
     const extracted = spawnSync("tar", ["-xf", archive, "-C", tmp], {
       stdio: "inherit",
     });
@@ -118,8 +119,67 @@ async function extract(
 }
 
 export type TripleMap = Partial<
-  Record<string, { url: string; binary: string }>
+  Record<string, { url: string | (() => Promise<string>); binary: string }>
 >;
+
+// Extracts the `n7.1`-style branch version embedded in a BtbN asset name
+// (e.g. "ffmpeg-n9.0-latest-win64-gpl-9.0.zip" → 9000, so newer branches
+// sort higher) into a comparable number.
+function btbnBranchVersion(assetName: string): number {
+  const match = assetName.match(/-n(\d+)\.(\d+)-latest-/);
+  if (!match) return -1;
+  return Number(match[1]) * 1000 + Number(match[2]);
+}
+
+// BtbN/FFmpeg-Builds' "latest" release is permanent, but the per-branch
+// asset filenames inside it are not — BtbN only keeps assets for a handful
+// of the newest `n*` branches (plus `master`), rotating older ones out as
+// new versions ship. A pin to one specific branch stem (e.g.
+// "ffmpeg-n7.1-latest") 404s the moment BtbN cycles that branch out — this
+// has already happened once. So instead of hardcoding a branch number,
+// this resolves whichever branch asset matching `assetPattern` is actually
+// still listed in the release at download time, preferring the newest
+// branch if more than one matches.
+function resolveBtbnFfmpegAsset(assetPattern: RegExp): () => Promise<string> {
+  return async () => {
+    const tmp = join(tmpdir(), `${randomBytes(8).toString("hex")}.json`);
+    try {
+      // curl, not fetch() — see the comment in extract() above for why.
+      const fetched = spawnSync(
+        "curl",
+        [
+          "-fL",
+          "--connect-timeout",
+          "15",
+          "--max-time",
+          "30",
+          "-o",
+          tmp,
+          `https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/tags/${FFMPEG_TAG}`,
+        ],
+        { stdio: "inherit" },
+      );
+      if (fetched.status !== 0)
+        throw new Error(
+          "curl failed fetching BtbN/FFmpeg-Builds release metadata",
+        );
+      const release = JSON.parse(readFileSync(tmp, "utf8")) as {
+        assets: { name: string; browser_download_url: string }[];
+      };
+      const matches = release.assets.filter((a) => assetPattern.test(a.name));
+      if (matches.length === 0)
+        throw new Error(
+          `No BtbN/FFmpeg-Builds asset in the "${FFMPEG_TAG}" release matched ${assetPattern}`,
+        );
+      matches.sort(
+        (a, b) => btbnBranchVersion(b.name) - btbnBranchVersion(a.name),
+      );
+      return matches[0].browser_download_url;
+    } finally {
+      rmSync(tmp, { force: true });
+    }
+  };
+}
 
 // Downloads `dest` if it's missing or its version marker doesn't match
 // `version` — a no-op otherwise. This is the one place that decides "is a
@@ -216,11 +276,15 @@ export const DOWNLOADS: Record<string, TripleMap> = {
   },
   ffmpeg: {
     "x86_64-unknown-linux-gnu": {
-      url: `https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_TAG}/${FFMPEG_ASSET_STEM}-linux64-gpl-7.1.tar.xz`,
+      url: resolveBtbnFfmpegAsset(
+        /^ffmpeg-n\d+\.\d+-latest-linux64-gpl-\d+\.\d+\.tar\.xz$/,
+      ),
       binary: "ffmpeg",
     },
     "aarch64-unknown-linux-gnu": {
-      url: `https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_TAG}/${FFMPEG_ASSET_STEM}-linuxarm64-gpl-7.1.tar.xz`,
+      url: resolveBtbnFfmpegAsset(
+        /^ffmpeg-n\d+\.\d+-latest-linuxarm64-gpl-\d+\.\d+\.tar\.xz$/,
+      ),
       binary: "ffmpeg",
     },
     "x86_64-apple-darwin": {
@@ -232,11 +296,15 @@ export const DOWNLOADS: Record<string, TripleMap> = {
       binary: "ffmpeg",
     },
     "x86_64-pc-windows-msvc": {
-      url: `https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_TAG}/${FFMPEG_ASSET_STEM}-win64-gpl-7.1.zip`,
+      url: resolveBtbnFfmpegAsset(
+        /^ffmpeg-n\d+\.\d+-latest-win64-gpl-\d+\.\d+\.zip$/,
+      ),
       binary: "ffmpeg.exe",
     },
     "x86_64-pc-windows-gnu": {
-      url: `https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_TAG}/${FFMPEG_ASSET_STEM}-win64-gpl-7.1.zip`,
+      url: resolveBtbnFfmpegAsset(
+        /^ffmpeg-n\d+\.\d+-latest-win64-gpl-\d+\.\d+\.zip$/,
+      ),
       binary: "ffmpeg.exe",
     },
   },

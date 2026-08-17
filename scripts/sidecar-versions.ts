@@ -19,8 +19,16 @@ export const PDFCPU_VERSION = "0.13.0";
 // downloadFfmpeg/mark-sidecar-version.ts record the binary's actual
 // resolved version (from `ffmpeg -version`) in its .version marker instead,
 // purely for diagnostics.
+//
+// The per-branch asset filenames *inside* that release are a different
+// story: BtbN only keeps assets for a handful of the newest `n*` branches
+// (plus `master`), rotating older ones out as new versions ship. A pin to
+// one specific branch stem (e.g. "ffmpeg-n7.1-latest") 404s the moment
+// BtbN cycles that branch out — this has already happened once. So nothing
+// here pins a branch number; downloadFfmpeg (sidecar-downloads.ts) resolves
+// whichever branch asset is actually still listed in this release at
+// download time instead.
 export const FFMPEG_TAG = "latest";
-export const FFMPEG_ASSET_STEM = "ffmpeg-n7.1-latest";
 
 // Sits next to the binary, e.g. `pandoc-x86_64-unknown-linux-gnu.version`.
 export function versionMarkerPath(dest: string): string {
