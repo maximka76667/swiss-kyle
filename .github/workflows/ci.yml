@@ -81,11 +81,14 @@ jobs:
         run: bun run lint
 
   e2e:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-22.04, windows-latest]
-    runs-on: ${{ matrix.os }}
+    # Windows dropped (2026-08-19): tauri-driver sessions never open a
+    # DevTools port on windows-latest regardless of driver/runtime version
+    # match (confirmed identical) or GPU acceleration (--disable-gpu via
+    # WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS, also confirmed no different) —
+    # see wiki/issues/e2e-ci-session-creation-timeout for the full
+    # investigation. Rust unit tests still run on Windows in the job above;
+    # this is specifically about tauri-driver + WebView2 in a GH-hosted VM.
+    runs-on: ubuntu-22.04
     # See rust-unit-tests' GITHUB_TOKEN comment — bun run test:e2e also goes
     # through prepare-sidecars.ts.
     env:
@@ -99,14 +102,9 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
-      # webkit2gtk-driver provides WebKitWebDriver, which tauri-driver drives
-      # on Linux; xvfb backs the virtual display wdio's @wdio/xvfb starts
-      # automatically when no real DISPLAY is available (confirmed working
-      # on Linux per wiki/components/e2e-tests.md — 30 consecutive full-suite
-      # runs, 0 failures, once three real Linux-only bugs were fixed there).
-      # Windows needs nothing extra here either: WebView2 ships on the image.
+      # webkit2gtk-driver provides WebKitWebDriver, which tauri-driver drives;
+      # xvfb backs the virtual display xvfb-run gives the whole suite below.
       - name: Install Linux dependencies
-        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf webkit2gtk-driver xvfb
@@ -127,31 +125,6 @@ jobs:
         if: steps.cache-tauri-driver.outputs.cache-hit != 'true'
         run: cargo install tauri-driver
 
-      # tauri-driver on Windows shells out to msedgedriver.exe, which must be
-      # on PATH and version-matched to the runner's installed WebView2
-      # Runtime (not the standalone Edge browser app — they drift out of
-      # sync). windows-latest images preinstall a driver matched to the Edge
-      # app, which is the wrong one; msedgedriver-tool instead reads the
-      # actual WebView2 Runtime version from the registry and downloads the
-      # matching driver into the current directory.
-      #
-      # pwsh does not fail a step on a native command's nonzero exit code by
-      # default, so every step here explicitly checks $LASTEXITCODE — without
-      # that, a broken `cargo install` or driver download here would silently
-      # no-op and every subsequent step would keep running against whatever
-      # (likely mismatched) driver was already on PATH, exactly reproducing
-      # this bug with no visible failure pointing at the cause.
-      - name: Install msedgedriver
-        if: runner.os == 'Windows'
-        run: |
-          cargo install --git https://github.com/chippers/msedgedriver-tool
-          if ($LASTEXITCODE -ne 0) { throw "cargo install msedgedriver-tool failed (exit $LASTEXITCODE)" }
-          & "$HOME/.cargo/bin/msedgedriver-tool.exe"
-          if ($LASTEXITCODE -ne 0) { throw "msedgedriver-tool failed to download a matching driver (exit $LASTEXITCODE)" }
-          if (-not (Test-Path "$PWD/msedgedriver.exe")) { throw "msedgedriver-tool reported success but msedgedriver.exe is missing from $PWD" }
-          & "$PWD/msedgedriver.exe" --version
-          $PWD.Path >> $env:GITHUB_PATH
-
       - name: Install e2e dependencies
         working-directory: e2e
         run: bun install
@@ -163,11 +136,7 @@ jobs:
       # A session-creation timeout in the suite itself carries no version
       # info — just "it hung for 2 minutes then gave up" — so a driver/runtime
       # mismatch takes a full ~12-minute run to even see, let alone diagnose.
-      # Print everything tauri-driver is actually about to pick up right
-      # before starting it, so that info exists in the log regardless of
-      # whether the run after this one passes, times out, or fails outright.
-      - name: Print driver/runtime versions (Linux)
-        if: runner.os == 'Linux'
+      - name: Print driver/runtime versions
         run: |
           echo "tauri-driver: $(command -v tauri-driver)"
           echo "WebKitWebDriver: $(dpkg -L webkit2gtk-driver | grep -m1 bin/)"
@@ -175,52 +144,19 @@ jobs:
           echo "xvfb-run: $(command -v xvfb-run)"
           echo "DISPLAY=$DISPLAY"
 
-      - name: Print driver/runtime versions (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          Write-Host "tauri-driver: $((Get-Command tauri-driver).Source)"
-          Write-Host "--- msedgedriver.exe on PATH, in resolution order (first wins) ---"
-          Get-Command msedgedriver -All | ForEach-Object {
-            Write-Host $_.Source
-            & $_.Source --version
-          }
-          try {
-            $key = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
-            Write-Host "WebView2 Runtime (machine, per registry): $((Get-ItemProperty $key).pv)"
-          } catch {
-            Write-Host "WebView2 Runtime registry lookup failed: $_"
-          }
-
       # Self-sufficient: rebuilds the worker sidecar, downloads the other
       # pinned tool binaries (ffmpeg/pandoc/typst/pdfcpu/nats-server) it
       # doesn't already have, builds the debug app, then runs the suite.
       #
-      # Linux must go through xvfb-run wrapping this whole step, not rely on
+      # Must go through xvfb-run wrapping this whole step, not rely on
       # wdio's own automatic per-worker Xvfb handling (@wdio/xvfb): tauri-driver
       # (and the app process it launches) is spawned once in wdio.conf.ts's
       # onPrepare hook, which runs in the launcher process itself — outside
       # the per-worker processes @wdio/xvfb wraps. Without a display already
       # present when tauri-driver starts, WebKitGTK fails to initialize and
       # every session request to it hangs until timeout.
-      - name: Run e2e suite (Linux)
-        if: runner.os == 'Linux'
+      - name: Run e2e suite
         run: xvfb-run --auto-servernum bun run test:e2e
-
-      # tauri-apps/tauri#2530: WebView2 on a virtualized Windows host (which
-      # GH-hosted windows-latest runners are) can get stuck — white window,
-      # 100% CPU — because it tries to use GPU acceleration that isn't really
-      # there. That would explain everything we've seen: the app process
-      # itself starts and runs fine (per the log dump), but its WebView2
-      # browser process never finishes initializing, so its DevTools port
-      # never opens. WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS is read by
-      # CoreWebView2EnvironmentOptions and merged with whatever wry sets
-      # itself (Microsoft's documented behavior — appended, not replaced),
-      # so this doesn't require touching app code or affecting non-CI runs.
-      - name: Run e2e suite (Windows)
-        if: runner.os == 'Windows'
-        env:
-          WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: --disable-gpu
-        run: bun run test:e2e
 
       # A session-creation timeout means the app process itself is the only
       # thing that knows what happened, and nothing we control gets to see
@@ -233,8 +169,8 @@ jobs:
       # so read directly from there instead — the one channel not filtered
       # through msedgedriver's own child-process plumbing. `always()` so this
       # runs on a timeout/failure, not just a pass.
-      - name: Print app log file (Linux)
-        if: always() && runner.os == 'Linux'
+      - name: Print app log file
+        if: always()
         run: |
           log_dir="$HOME/.local/share/com.swiss.kyle/logs"
           if [ -d "$log_dir" ]; then
@@ -242,16 +178,3 @@ jobs:
           else
             echo "no app log directory at $log_dir"
           fi
-
-      - name: Print app log file (Windows)
-        if: always() && runner.os == 'Windows'
-        run: |
-          $logDir = "$env:LOCALAPPDATA\com.swiss.kyle\logs"
-          if (Test-Path $logDir) {
-            Get-ChildItem $logDir -Recurse -File | ForEach-Object {
-              Write-Host "--- $($_.FullName) ---"
-              Get-Content $_.FullName
-            }
-          } else {
-            Write-Host "no app log directory at $logDir"
-          }
