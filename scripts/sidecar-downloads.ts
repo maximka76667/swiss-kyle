@@ -145,6 +145,14 @@ function resolveBtbnFfmpegAsset(assetPattern: RegExp): () => Promise<string> {
     const tmp = join(tmpdir(), `${randomBytes(8).toString("hex")}.json`);
     try {
       // curl, not fetch() — see the comment in extract() above for why.
+      //
+      // Authenticated when a token is available: unauthenticated api.github.com
+      // requests are rate-limited to 60/hour per source IP, and GitHub-hosted
+      // runners share IP pools across the world's Actions traffic — easily
+      // exhausted, producing a 403 unrelated to anything this workflow did.
+      // GITHUB_TOKEN raises that to 5000/hour; harmless to omit locally
+      // (dev machines don't hit the shared-IP limit in practice).
+      const token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN;
       const fetched = spawnSync(
         "curl",
         [
@@ -153,6 +161,7 @@ function resolveBtbnFfmpegAsset(assetPattern: RegExp): () => Promise<string> {
           "15",
           "--max-time",
           "30",
+          ...(token ? ["-H", `Authorization: Bearer ${token}`] : []),
           "-o",
           tmp,
           `https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/tags/${FFMPEG_TAG}`,

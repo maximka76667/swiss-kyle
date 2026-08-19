@@ -1,7 +1,7 @@
 name: CI
 
 on:
-  push:
+  pull_request:
   workflow_dispatch:
 
 concurrency:
@@ -9,12 +9,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  rust-tests:
+  rust-unit-tests:
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04, windows-latest]
     runs-on: ${{ matrix.os }}
+    # Prepare sidecar binaries calls the BtbN/FFmpeg-Builds api.github.com
+    # endpoint unauthenticated without this — 60 requests/hour per source IP,
+    # shared across every GitHub-hosted runner in the world, so it 403s
+    # intermittently for reasons unrelated to this workflow. GITHUB_TOKEN
+    # raises that to 5000/hour; scripts/sidecar-downloads.ts only uses it if
+    # present, so this has no effect outside CI.
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -73,11 +81,18 @@ jobs:
         run: bun run lint
 
   e2e:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-22.04, windows-latest]
-    runs-on: ${{ matrix.os }}
+    # Windows dropped (2026-08-19): tauri-driver sessions never open a
+    # DevTools port on windows-latest regardless of driver/runtime version
+    # match (confirmed identical) or GPU acceleration (--disable-gpu via
+    # WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS, also confirmed no different) —
+    # see wiki/issues/e2e-ci-session-creation-timeout for the full
+    # investigation. Rust unit tests still run on Windows in the job above;
+    # this is specifically about tauri-driver + WebView2 in a GH-hosted VM.
+    runs-on: ubuntu-22.04
+    # See rust-unit-tests' GITHUB_TOKEN comment — bun run test:e2e also goes
+    # through prepare-sidecars.ts.
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -87,14 +102,9 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
-      # webkit2gtk-driver provides WebKitWebDriver, which tauri-driver drives
-      # on Linux; xvfb backs the virtual display wdio's @wdio/xvfb starts
-      # automatically when no real DISPLAY is available (confirmed working
-      # on Linux per wiki/components/e2e-tests.md — 30 consecutive full-suite
-      # runs, 0 failures, once three real Linux-only bugs were fixed there).
-      # Windows needs nothing extra here either: WebView2 ships on the image.
+      # webkit2gtk-driver provides WebKitWebDriver, which tauri-driver drives;
+      # xvfb backs the virtual display xvfb-run gives the whole suite below.
       - name: Install Linux dependencies
-        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf webkit2gtk-driver xvfb
@@ -123,8 +133,48 @@ jobs:
         working-directory: ui
         run: bun install
 
+      # A session-creation timeout in the suite itself carries no version
+      # info — just "it hung for 2 minutes then gave up" — so a driver/runtime
+      # mismatch takes a full ~12-minute run to even see, let alone diagnose.
+      - name: Print driver/runtime versions
+        run: |
+          echo "tauri-driver: $(command -v tauri-driver)"
+          echo "WebKitWebDriver: $(dpkg -L webkit2gtk-driver | grep -m1 bin/)"
+          dpkg -s webkit2gtk-driver libwebkit2gtk-4.1-0 xvfb 2>&1 | grep -E '^(Package|Version):'
+          echo "xvfb-run: $(command -v xvfb-run)"
+          echo "DISPLAY=$DISPLAY"
+
       # Self-sufficient: rebuilds the worker sidecar, downloads the other
       # pinned tool binaries (ffmpeg/pandoc/typst/pdfcpu/nats-server) it
       # doesn't already have, builds the debug app, then runs the suite.
+      #
+      # Must go through xvfb-run wrapping this whole step, not rely on
+      # wdio's own automatic per-worker Xvfb handling (@wdio/xvfb): tauri-driver
+      # (and the app process it launches) is spawned once in wdio.conf.ts's
+      # onPrepare hook, which runs in the launcher process itself — outside
+      # the per-worker processes @wdio/xvfb wraps. Without a display already
+      # present when tauri-driver starts, WebKitGTK fails to initialize and
+      # every session request to it hangs until timeout.
       - name: Run e2e suite
-        run: bun run test:e2e
+        run: xvfb-run --auto-servernum bun run test:e2e
+
+      # A session-creation timeout means the app process itself is the only
+      # thing that knows what happened, and nothing we control gets to see
+      # its output: msedgedriver.exe (spawned by tauri-driver, which sets
+      # stdout(Stdio::null()) on it — see tauri-driver's webdriver.rs) is what
+      # actually launches app.exe, not tauri-driver or wdio.conf.ts directly,
+      # so neither of those ever sees the app's own stdout regardless of how
+      # tauri-driver itself is spawned. The debug build's tauri_plugin_log
+      # writes to a file in the OS log dir independently of all that, though,
+      # so read directly from there instead — the one channel not filtered
+      # through msedgedriver's own child-process plumbing. `always()` so this
+      # runs on a timeout/failure, not just a pass.
+      - name: Print app log file
+        if: always()
+        run: |
+          log_dir="$HOME/.local/share/com.swiss.kyle/logs"
+          if [ -d "$log_dir" ]; then
+            find "$log_dir" -type f -print -exec cat {} \;
+          else
+            echo "no app log directory at $log_dir"
+          fi
