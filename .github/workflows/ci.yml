@@ -116,14 +116,28 @@ jobs:
         run: cargo install tauri-driver
 
       # tauri-driver on Windows shells out to msedgedriver.exe, which must be
-      # on PATH and version-matched to the runner's installed Edge/WebView2 —
-      # it isn't preinstalled. msedgedriver-tool detects the local Edge
-      # version and downloads the matching driver into the current directory.
+      # on PATH and version-matched to the runner's installed WebView2
+      # Runtime (not the standalone Edge browser app — they drift out of
+      # sync). windows-latest images preinstall a driver matched to the Edge
+      # app, which is the wrong one; msedgedriver-tool instead reads the
+      # actual WebView2 Runtime version from the registry and downloads the
+      # matching driver into the current directory.
+      #
+      # pwsh does not fail a step on a native command's nonzero exit code by
+      # default, so every step here explicitly checks $LASTEXITCODE — without
+      # that, a broken `cargo install` or driver download here would silently
+      # no-op and every subsequent step would keep running against whatever
+      # (likely mismatched) driver was already on PATH, exactly reproducing
+      # this bug with no visible failure pointing at the cause.
       - name: Install msedgedriver
         if: runner.os == 'Windows'
         run: |
           cargo install --git https://github.com/chippers/msedgedriver-tool
+          if ($LASTEXITCODE -ne 0) { throw "cargo install msedgedriver-tool failed (exit $LASTEXITCODE)" }
           & "$HOME/.cargo/bin/msedgedriver-tool.exe"
+          if ($LASTEXITCODE -ne 0) { throw "msedgedriver-tool failed to download a matching driver (exit $LASTEXITCODE)" }
+          if (-not (Test-Path "$PWD/msedgedriver.exe")) { throw "msedgedriver-tool reported success but msedgedriver.exe is missing from $PWD" }
+          & "$PWD/msedgedriver.exe" --version
           $PWD.Path >> $env:GITHUB_PATH
 
       - name: Install e2e dependencies
@@ -133,6 +147,39 @@ jobs:
       - name: Install ui dependencies
         working-directory: ui
         run: bun install
+
+      # A session-creation timeout in the suite itself carries no version
+      # info — just "it hung for 2 minutes then gave up" — so a driver/runtime
+      # mismatch takes a full ~12-minute run to even see, let alone diagnose.
+      # Print everything tauri-driver is actually about to pick up right
+      # before starting it, so that info exists in the log regardless of
+      # whether the run after this one passes, times out, or fails outright.
+      - name: Print driver/runtime versions (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          echo "tauri-driver: $(command -v tauri-driver)"
+          tauri-driver --version || true
+          echo "WebKitWebDriver: $(dpkg -L webkit2gtk-driver | grep -m1 bin/)"
+          dpkg -s webkit2gtk-driver libwebkit2gtk-4.1-0 xvfb 2>&1 | grep -E '^(Package|Version):'
+          echo "xvfb-run: $(command -v xvfb-run)"
+          echo "DISPLAY=$DISPLAY"
+
+      - name: Print driver/runtime versions (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          Write-Host "tauri-driver: $((Get-Command tauri-driver).Source)"
+          tauri-driver --version
+          Write-Host "--- msedgedriver.exe on PATH, in resolution order (first wins) ---"
+          Get-Command msedgedriver -All | ForEach-Object {
+            Write-Host $_.Source
+            & $_.Source --version
+          }
+          try {
+            $key = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+            Write-Host "WebView2 Runtime (machine, per registry): $((Get-ItemProperty $key).pv)"
+          } catch {
+            Write-Host "WebView2 Runtime registry lookup failed: $_"
+          }
 
       # Self-sufficient: rebuilds the worker sidecar, downloads the other
       # pinned tool binaries (ffmpeg/pandoc/typst/pdfcpu/nats-server) it
