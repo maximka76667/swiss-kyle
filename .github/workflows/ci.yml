@@ -9,12 +9,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  rust-tests:
+  rust-unit-tests:
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04, windows-latest]
     runs-on: ${{ matrix.os }}
+    # Prepare sidecar binaries calls the BtbN/FFmpeg-Builds api.github.com
+    # endpoint unauthenticated without this — 60 requests/hour per source IP,
+    # shared across every GitHub-hosted runner in the world, so it 403s
+    # intermittently for reasons unrelated to this workflow. GITHUB_TOKEN
+    # raises that to 5000/hour; scripts/sidecar-downloads.ts only uses it if
+    # present, so this has no effect outside CI.
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -78,6 +86,10 @@ jobs:
       matrix:
         os: [ubuntu-22.04, windows-latest]
     runs-on: ${{ matrix.os }}
+    # See rust-unit-tests' GITHUB_TOKEN comment — bun run test:e2e also goes
+    # through prepare-sidecars.ts.
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
