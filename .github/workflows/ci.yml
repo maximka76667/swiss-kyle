@@ -199,3 +199,37 @@ jobs:
       - name: Run e2e suite (Windows)
         if: runner.os == 'Windows'
         run: bun run test:e2e
+
+      # A session-creation timeout means the app process itself is the only
+      # thing that knows what happened, and nothing we control gets to see
+      # its output: msedgedriver.exe (spawned by tauri-driver, which sets
+      # stdout(Stdio::null()) on it — see tauri-driver's webdriver.rs) is what
+      # actually launches app.exe, not tauri-driver or wdio.conf.ts directly,
+      # so neither of those ever sees the app's own stdout regardless of how
+      # tauri-driver itself is spawned. The debug build's tauri_plugin_log
+      # writes to a file in the OS log dir independently of all that, though,
+      # so read directly from there instead — the one channel not filtered
+      # through msedgedriver's own child-process plumbing. `always()` so this
+      # runs on a timeout/failure, not just a pass.
+      - name: Print app log file (Linux)
+        if: always() && runner.os == 'Linux'
+        run: |
+          log_dir="$HOME/.local/share/com.swiss.kyle/logs"
+          if [ -d "$log_dir" ]; then
+            find "$log_dir" -type f -print -exec cat {} \;
+          else
+            echo "no app log directory at $log_dir"
+          fi
+
+      - name: Print app log file (Windows)
+        if: always() && runner.os == 'Windows'
+        run: |
+          $logDir = "$env:LOCALAPPDATA\com.swiss.kyle\logs"
+          if (Test-Path $logDir) {
+            Get-ChildItem $logDir -Recurse -File | ForEach-Object {
+              Write-Host "--- $($_.FullName) ---"
+              Get-Content $_.FullName
+            }
+          } else {
+            Write-Host "no app log directory at $logDir"
+          }

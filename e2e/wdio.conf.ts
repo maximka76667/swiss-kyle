@@ -79,10 +79,24 @@ export const config: WebdriverIO.Config = {
     });
     await waitForPort(5173);
 
+    // stdio was "ignore" here, which silently discarded tauri-driver's own
+    // output *and* the launched app's — the debug build's tauri_plugin_log
+    // defaults to stdout, so this was the only place that log could have
+    // gone. A session-creation hang gave zero insight into whether the app
+    // ever started, got partway through its setup() (nats-server connect,
+    // sidecar spawn, etc.), or hit a fatal() call — piping it out here, with
+    // a prefix so it's identifiable next to wdio's own worker logs, is the
+    // only way to see any of that on the next CI failure instead of guessing.
     tauriDriverProcess = spawn("tauri-driver", [], {
-      stdio: "ignore",
+      stdio: ["ignore", "pipe", "pipe"],
       detached,
     });
+    tauriDriverProcess.stdout?.on("data", (d) =>
+      process.stdout.write(`[tauri-driver] ${d}`),
+    );
+    tauriDriverProcess.stderr?.on("data", (d) =>
+      process.stderr.write(`[tauri-driver] ${d}`),
+    );
     await waitForPort(4444);
   },
   after: async () => {
