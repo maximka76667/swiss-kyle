@@ -9,10 +9,8 @@ import {
 } from "@shadcn/components/ui/sidebar";
 import { ToolNav } from "@/components/tool-nav";
 import { JobHistory } from "@/components/job-history";
-import { CutVideo } from "@/components/cut-video";
-import { DocConverter } from "@/components/doc-converter";
-import { MergePdfs } from "@/components/merge-pdfs";
 import { DiagnosticsPage } from "@/components/diagnostics-page";
+import { TOOLS } from "@/lib/tools";
 import { FloatingSidebarTrigger } from "@/components/floating-sidebar-trigger";
 import { Toaster } from "@shadcn/components/ui/sonner";
 import type { JobStatus, JobStatusEvent, Tool, TrackedJob } from "@/types/jobs";
@@ -80,18 +78,13 @@ function App() {
           >
             <SidebarInset>
               <Routes>
-                <Route
-                  path="/cut-video"
-                  element={<CutVideo onJobSubmitted={handleJobSubmitted} />}
-                />
-                <Route
-                  path="/doc-converter"
-                  element={<DocConverter onJobSubmitted={handleJobSubmitted} />}
-                />
-                <Route
-                  path="/merge-pdfs"
-                  element={<MergePdfs onJobSubmitted={handleJobSubmitted} />}
-                />
+                {TOOLS.map(({ path, component: Component }) => (
+                  <Route
+                    key={path}
+                    path={path}
+                    element={<Component onJobSubmitted={handleJobSubmitted} />}
+                  />
+                ))}
                 <Route path="/diagnostics" element={<DiagnosticsPage />} />
               </Routes>
             </SidebarInset>

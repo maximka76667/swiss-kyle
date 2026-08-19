@@ -4,19 +4,28 @@ A desktop toolbox for local media and document jobs, built with Tauri 2 and Reac
 
 **Tools:**
 
-- **Cut video** — trim clips with ffmpeg stream copy (`-c copy`), so cuts take seconds regardless of file size, with a scrubbing timeline and in-app preview.
+- **Edit video** — trim and/or crop clips with ffmpeg, with a scrubbing timeline, an on-preview crop selector, and in-app playback.
 - **Convert documents** — Markdown/HTML/Docx conversions via pandoc, PDF output via typst, and Office formats (doc/docx/odt/rtf) to PDF via LibreOffice or Microsoft Word (Windows only).
 - **Merge PDFs** — combine PDFs in a drag-to-reorder list via [pdfcpu](https://pdfcpu.io/).
 
 ## Screenshots
 
-![Cut video tool](docs/images/video-cut.png)
+![Edit video tool](docs/images/video-cut.png)
 
 ![Convert documents tool](docs/images/docs.png)
 
 ![Merge PDFs tool](docs/images/merging.png)
 
 ## How it works
+
+```mermaid
+flowchart LR
+    UI[Tauri app<br/>React UI] -- submit job --> NATS[(NATS JetStream<br/>local queue)]
+    NATS -- pull --> W1[Worker]
+    NATS -- pull --> W2[Worker]
+    W1 & W2 --> Tools[ffmpeg / pandoc+typst /<br/>pdfcpu / LibreOffice / Word]
+    W1 & W2 -. status .-> NATS -. job-status event .-> UI
+```
 
 The Tauri shell spawns two kinds of sidecar processes at startup:
 
@@ -60,6 +69,12 @@ bun run test:unit
 ```
 
 (equivalent to plain `cargo test`, run from the repo root)
+
+Frontend unit tests (`ui/`, via Bun's built-in test runner):
+
+```sh
+bun run test:frontend
+```
 
 **End-to-end tests** drive the real built app through [`tauri-driver`](https://github.com/tauri-apps/tauri/tree/dev/tooling/webdriver) (real WebView, real sidecars, no mocking). One-time setup: `cargo install tauri-driver`. Job output during e2e runs (and any debug build) is redirected to `.development/` instead of your real Documents folder — see `.env.development`. Then, from the repo root:
 

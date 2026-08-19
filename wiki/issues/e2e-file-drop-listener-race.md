@@ -3,7 +3,7 @@
 **Type**: issue
 **Summary**: Resolved. `useFileDrop`'s `onDragDropEvent()` listener registration is an async IPC round-trip, not synchronous with the component's render — a drop (real or e2e-synthesized) that arrives before it resolves is silently lost. Fixed by exposing real listener-readiness via a `data-drop-ready` DOM attribute instead of relying on rendered text as a proxy for it.
 **Tags**: #issue #resolved #frontend #e2e #race-condition
-**Sources**: [[ui/src/hooks/use-file-drop.ts]], [[ui/src/components/cut-video.tsx]], [[ui/src/components/doc-converter.tsx]], [[ui/src/components/merge-pdfs.tsx]], [[e2e/support/drag-drop.ts]]
+**Sources**: [[ui/src/hooks/use-file-drop.ts]], [[ui/src/components/edit-video.tsx]], [[ui/src/components/doc-converter.tsx]], [[ui/src/components/merge-pdfs.tsx]], [[e2e/support/drag-drop.ts]]
 **Related**: [[wiki/components/frontend]], [[wiki/components/e2e-tests]]
 **Last Updated**: 2026-07-10
 

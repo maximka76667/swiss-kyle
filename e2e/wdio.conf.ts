@@ -55,7 +55,10 @@ export const config: WebdriverIO.Config = {
       },
     },
   ],
-  logLevel: "info",
+  // "info" logs every WebDriver command/request/response — useful while
+  // diagnosing a hung/timed-out session (see
+  // wiki/issues/e2e-ci-session-creation-timeout), noise otherwise.
+  logLevel: "warn",
   framework: "mocha",
   mochaOpts: {
     ui: "bdd",

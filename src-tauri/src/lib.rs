@@ -322,7 +322,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            commands::submit_cut_job,
+            commands::submit_edit_video_job,
             commands::submit_doc_convert_job,
             commands::submit_merge_pdfs_job,
             commands::get_pdf_page_count,

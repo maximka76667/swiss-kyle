@@ -3,7 +3,7 @@
 **Type**: issue
 **Summary**: Resolved. WebdriverIO's native `.click()` (a synthesized OS-level pointer click at the element's computed screen coordinates) does not reliably activate elements through `wry`'s Linux WebDriver backend — confirmed by controlled comparison to produce zero successful sidebar navigations across repeated runs, while dispatching `.click()` directly on the resolved DOM element via `browser.execute()` worked every time. Windows/WebView2 is unaffected.
 **Tags**: #issue #resolved #e2e #linux #wry #webkitgtk #flakiness
-**Sources**: [[e2e/support/click.ts]], [[e2e/support/navigate.ts]], [[e2e/specs/cut-video.spec.ts]], [[e2e/specs/navigation.spec.ts]]
+**Sources**: [[e2e/support/click.ts]], [[e2e/support/navigate.ts]], [[e2e/specs/edit-video.spec.ts]], [[e2e/specs/navigation.spec.ts]]
 **Related**: [[wiki/components/e2e-tests]], [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]]
 **Last Updated**: 2026-07-10
 

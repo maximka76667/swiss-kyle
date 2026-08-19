@@ -8,12 +8,12 @@ _Last updated: 2026-08-19_
 
 ## Components
 
-- [[wiki/components/job-types]] — `JobEnvelope`, `Job`/`CutVideo`/`ConvertDocument`, `JobStatus`/`StatusEvent` — all NATS message types
+- [[wiki/components/job-types]] — `JobEnvelope`, `Job`/`EditVideo`/`ConvertDocument`, `JobStatus`/`StatusEvent` — all NATS message types
 - [[wiki/components/publisher]] — Shared `Publisher` struct: connects to NATS, durably publishes jobs
-- [[wiki/components/worker]] — Pulls jobs, runs ffmpeg (cut-video), the document converter, or pdfcpu (merge-pdfs), streams progress, publishes StatusEvents
+- [[wiki/components/worker]] — Pulls jobs, runs ffmpeg (edit-video: trim/crop), the document converter, or pdfcpu (merge-pdfs), streams progress, publishes StatusEvents
 - [[wiki/components/tauri-app]] — Sidecar orchestration, Tauri commands, NATS status relay
 - [[wiki/components/video-server]] — Local Axum server streaming videos with HTTP range support, token-gated against arbitrary file access
-- [[wiki/components/frontend]] — React/TS app: three tools (Cut Video, Doc Converter, Merge PDFs), drag-drop, router-based navigation, job history sidebar
+- [[wiki/components/frontend]] — React/TS app: three tools (Edit Video, Doc Converter, Merge PDFs), drag-drop, router-based navigation, job history sidebar
 - [[wiki/components/e2e-tests]] — WebdriverIO + tauri-driver suite driving the real packaged app end to end; no mocking
 - [[wiki/components/cli-publisher]] — Archived: CLI dev tool for job submission, replaced by Tauri app
 - [[wiki/components/http-api]] — Archived: Axum HTTP API from VPS-backend era, replaced by Tauri app

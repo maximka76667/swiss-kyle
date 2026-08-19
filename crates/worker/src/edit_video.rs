@@ -1,5 +1,5 @@
 use crate::error::process_error;
-use shared::{CutVideo, output_dir};
+use shared::{EditVideo, output_dir};
 use std::io::Read;
 use std::process::{Command, Stdio};
 use tokio::sync::mpsc::UnboundedSender;
@@ -15,16 +15,16 @@ fn parse_time_secs(line: &str) -> Option<f64> {
 }
 
 pub fn run(
-    job: CutVideo,
+    job: EditVideo,
     ffmpeg_bin: &str,
     progress_tx: &UnboundedSender<f64>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!(
-        "Cutting {} → {} ({}-{}s)",
+        "Editing {} → {} ({}-{}s)",
         job.input, job.output, job.start_secs, job.end_secs
     );
 
-    let output_dir = output_dir("cut-video");
+    let output_dir = output_dir("edit-video");
     std::fs::create_dir_all(&output_dir)?;
     let output_path = output_dir.join(&job.output);
 
@@ -41,7 +41,7 @@ pub fn run(
     // standard fast-seek-then-decode-forward idiom: ffmpeg seeks to the
     // nearest preceding keyframe, decodes forward to the exact requested
     // start, then encodes exactly `duration_secs` from there.
-    let args = [
+    let mut args = vec![
         "-y".to_string(),
         "-ss".to_string(),
         job.start_secs.to_string(),
@@ -61,8 +61,18 @@ pub fn run(
         "18".to_string(),
         "-c:a".to_string(),
         "copy".to_string(),
-        output_path.to_string_lossy().into_owned(),
     ];
+
+    // libx264/yuv420p needs even dimensions; the frontend-computed drag
+    // rectangle won't naturally land on even pixels.
+    if let Some(crop) = &job.crop {
+        let w = (crop.width & !1).max(2);
+        let h = (crop.height & !1).max(2);
+        args.push("-vf".to_string());
+        args.push(format!("crop={}:{}:{}:{}", w, h, crop.x, crop.y));
+    }
+
+    args.push(output_path.to_string_lossy().into_owned());
 
     let mut child = Command::new(ffmpeg_bin)
         .args(&args)

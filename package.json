@@ -1,6 +1,7 @@
 {
   "scripts": {
     "test:unit": "cargo test",
+    "test:frontend": "bun --cwd=ui run test",
     "test:e2e": "bun --cwd=e2e run test",
     "format": "prettier --write ."
   },

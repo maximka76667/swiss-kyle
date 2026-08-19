@@ -1,5 +1,5 @@
 use crate::consumer::HEARTBEAT_INTERVAL;
-use crate::{convert_document, cut_video, merge_pdfs};
+use crate::{convert_document, edit_video, merge_pdfs};
 use async_nats::jetstream::{AckKind, Message};
 use shared::{Job, JobEnvelope, JobStatus, LogEntry, LogLevel, StatusEvent, publish_log, publish_status};
 
@@ -144,7 +144,7 @@ async fn run_job(
     let log_client = client.clone();
     let mut job_task = tokio::task::spawn_blocking(move || {
         match envelope.job {
-            Job::CutVideo(j) => cut_video::run(j, &bins.ffmpeg, &progress_tx),
+            Job::EditVideo(j) => edit_video::run(j, &bins.ffmpeg, &progress_tx),
             Job::ConvertDocument(j) => {
                 convert_document::run(j, &job_id, &bins.pandoc, &bins.typst, &log_client)
             }

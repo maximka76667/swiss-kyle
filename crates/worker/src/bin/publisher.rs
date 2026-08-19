@@ -1,4 +1,4 @@
-use shared::{CutVideo, Job, JobEnvelope, Publisher};
+use shared::{EditVideo, Job, JobEnvelope, Publisher};
 
 #[tokio::main]
 async fn main() -> Result<(), async_nats::Error> {
@@ -9,11 +9,12 @@ async fn main() -> Result<(), async_nats::Error> {
     }
 
     let job = match args[1].as_str() {
-        "cut" => Job::CutVideo(CutVideo {
+        "cut" => Job::EditVideo(EditVideo {
             input: format!("videos/{}", args[2]),
             output: format!("videos/{}", args[3]),
             start_secs: args[4].parse().expect("start_secs must be a number"),
             end_secs: args[5].parse().expect("end_secs must be a number"),
+            crop: None,
         }),
         cmd => {
             eprintln!("Unknown command: {}", cmd);
