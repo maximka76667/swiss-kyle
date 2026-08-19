@@ -1,6 +1,6 @@
 # Wiki Index
 
-_Last updated: 2026-08-07_
+_Last updated: 2026-08-19_
 
 ## Architecture
 
@@ -55,3 +55,4 @@ _(empty)_
 - [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]] — Resolved: two unrelated Linux bugs in one test — an expected-but-unhandled close-command error, and a kworker-thread substring collision in process-name matching
 - [[wiki/issues/shallow-vs-deep-module-audit]] — Open: Ousterhout deep/shallow-module audit flagging duplicated file-pick logic across tool components, duplicated DocFormat knowledge across the Rust/TS boundary, repeated status-narrowing in job-history.tsx, and a depth outlier in commands.rs
 - [[wiki/issues/pdfcpu-merge-refuses-overwrite]] — Resolved: pdfcpu refused to overwrite an existing merge output by default, failing the job on a same-title re-merge; fixed with --force for consistency with cut_video.rs's existing -y overwrite behavior
+- [[wiki/issues/e2e-ci-session-creation-timeout]] — Fix applied, unverified: every CI session failed to create — Linux launches tauri-driver before any display exists; Windows's preinstalled msedgedriver doesn't version-match the app's WebView2 Runtime

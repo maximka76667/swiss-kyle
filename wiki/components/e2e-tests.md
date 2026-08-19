@@ -3,9 +3,9 @@
 **Type**: component
 **Summary**: `e2e/` — WebdriverIO + `tauri-driver` suite that drives the real, packaged Tauri app (real WebView2, real sidecars) end to end; no mocking layer.
 **Tags**: #component #testing #e2e #webdriverio #tauri
-**Sources**: [[e2e/wdio.conf.ts]], [[e2e/package.json]], [[e2e/repeat.ts]], [[e2e/specs/smoke.spec.ts]], [[e2e/specs/sidecars.spec.ts]], [[e2e/specs/cut-video.spec.ts]], [[e2e/specs/doc-converter.spec.ts]], [[e2e/specs/merge-pdfs.spec.ts]], [[e2e/specs/navigation.spec.ts]], [[e2e/support/selectors.ts]], [[e2e/support/drag-drop.ts]], [[e2e/support/navigate.ts]], [[e2e/support/click.ts]], [[e2e/support/ffmpeg.ts]], [[src-tauri/capabilities/default.json]], [[crates/shared/src/lib.rs]], [[ui/src/hooks/use-file-drop.ts]], [[.env.development]]
-**Related**: [[wiki/components/frontend]], [[wiki/components/tauri-app]], [[wiki/components/worker]], [[wiki/issues/e2e-sidecar-leak-across-specs]], [[wiki/issues/tauri-resource-copy-only-on-app-rebuild]], [[wiki/issues/webview2-session-crash-on-fast-relaunch]], [[wiki/issues/e2e-linux-native-click-unreliable]], [[wiki/issues/e2e-file-drop-listener-race]], [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]], [[wiki/issues/pdfcpu-merge-refuses-overwrite]]
-**Last Updated**: 2026-08-07
+**Sources**: [[e2e/wdio.conf.ts]], [[e2e/package.json]], [[e2e/repeat.ts]], [[e2e/specs/smoke.spec.ts]], [[e2e/specs/sidecars.spec.ts]], [[e2e/specs/cut-video.spec.ts]], [[e2e/specs/doc-converter.spec.ts]], [[e2e/specs/merge-pdfs.spec.ts]], [[e2e/specs/navigation.spec.ts]], [[e2e/support/selectors.ts]], [[e2e/support/drag-drop.ts]], [[e2e/support/navigate.ts]], [[e2e/support/click.ts]], [[e2e/support/ffmpeg.ts]], [[src-tauri/capabilities/default.json]], [[crates/shared/src/lib.rs]], [[ui/src/hooks/use-file-drop.ts]], [[.env.development]], [[.github/workflows/ci.yml]]
+**Related**: [[wiki/components/frontend]], [[wiki/components/tauri-app]], [[wiki/components/worker]], [[wiki/issues/e2e-sidecar-leak-across-specs]], [[wiki/issues/tauri-resource-copy-only-on-app-rebuild]], [[wiki/issues/webview2-session-crash-on-fast-relaunch]], [[wiki/issues/e2e-linux-native-click-unreliable]], [[wiki/issues/e2e-file-drop-listener-race]], [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]], [[wiki/issues/pdfcpu-merge-refuses-overwrite]], [[wiki/issues/e2e-ci-session-creation-timeout]]
+**Last Updated**: 2026-08-19
 
 ---
 

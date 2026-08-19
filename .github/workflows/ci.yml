@@ -1,7 +1,7 @@
 name: CI
 
 on:
-  push:
+  pull_request:
   workflow_dispatch:
 
 concurrency:
@@ -115,6 +115,17 @@ jobs:
         if: steps.cache-tauri-driver.outputs.cache-hit != 'true'
         run: cargo install tauri-driver
 
+      # tauri-driver on Windows shells out to msedgedriver.exe, which must be
+      # on PATH and version-matched to the runner's installed Edge/WebView2 —
+      # it isn't preinstalled. msedgedriver-tool detects the local Edge
+      # version and downloads the matching driver into the current directory.
+      - name: Install msedgedriver
+        if: runner.os == 'Windows'
+        run: |
+          cargo install --git https://github.com/chippers/msedgedriver-tool
+          & "$HOME/.cargo/bin/msedgedriver-tool.exe"
+          $PWD.Path >> $env:GITHUB_PATH
+
       - name: Install e2e dependencies
         working-directory: e2e
         run: bun install
@@ -126,5 +137,18 @@ jobs:
       # Self-sufficient: rebuilds the worker sidecar, downloads the other
       # pinned tool binaries (ffmpeg/pandoc/typst/pdfcpu/nats-server) it
       # doesn't already have, builds the debug app, then runs the suite.
-      - name: Run e2e suite
+      #
+      # Linux must go through xvfb-run wrapping this whole step, not rely on
+      # wdio's own automatic per-worker Xvfb handling (@wdio/xvfb): tauri-driver
+      # (and the app process it launches) is spawned once in wdio.conf.ts's
+      # onPrepare hook, which runs in the launcher process itself — outside
+      # the per-worker processes @wdio/xvfb wraps. Without a display already
+      # present when tauri-driver starts, WebKitGTK fails to initialize and
+      # every session request to it hangs until timeout.
+      - name: Run e2e suite (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum bun run test:e2e
+
+      - name: Run e2e suite (Windows)
+        if: runner.os == 'Windows'
         run: bun run test:e2e
