@@ -158,7 +158,6 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           echo "tauri-driver: $(command -v tauri-driver)"
-          tauri-driver --version || true
           echo "WebKitWebDriver: $(dpkg -L webkit2gtk-driver | grep -m1 bin/)"
           dpkg -s webkit2gtk-driver libwebkit2gtk-4.1-0 xvfb 2>&1 | grep -E '^(Package|Version):'
           echo "xvfb-run: $(command -v xvfb-run)"
@@ -168,7 +167,6 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           Write-Host "tauri-driver: $((Get-Command tauri-driver).Source)"
-          tauri-driver --version
           Write-Host "--- msedgedriver.exe on PATH, in resolution order (first wins) ---"
           Get-Command msedgedriver -All | ForEach-Object {
             Write-Host $_.Source
@@ -196,8 +194,20 @@ jobs:
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum bun run test:e2e
 
+      # tauri-apps/tauri#2530: WebView2 on a virtualized Windows host (which
+      # GH-hosted windows-latest runners are) can get stuck — white window,
+      # 100% CPU — because it tries to use GPU acceleration that isn't really
+      # there. That would explain everything we've seen: the app process
+      # itself starts and runs fine (per the log dump), but its WebView2
+      # browser process never finishes initializing, so its DevTools port
+      # never opens. WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS is read by
+      # CoreWebView2EnvironmentOptions and merged with whatever wry sets
+      # itself (Microsoft's documented behavior — appended, not replaced),
+      # so this doesn't require touching app code or affecting non-CI runs.
       - name: Run e2e suite (Windows)
         if: runner.os == 'Windows'
+        env:
+          WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: --disable-gpu
         run: bun run test:e2e
 
       # A session-creation timeout means the app process itself is the only
