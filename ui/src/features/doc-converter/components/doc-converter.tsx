@@ -3,7 +3,6 @@ import { OutputFolderLink } from "@/components/output-folder-link";
 import { DocConverterDropZone } from "@/features/doc-converter/components/doc-converter-drop-zone";
 import { ConvertingForm } from "@/features/doc-converter/components/converting-form";
 import type { Tool } from "@/types/jobs";
-import { useConverterForm } from "@/features/doc-converter/hooks/use-converter-form";
 import { useConverterSubmit } from "@/features/doc-converter/hooks/use-converter-submit";
 
 interface Props {
@@ -16,28 +15,7 @@ interface Props {
 }
 
 export function DocConverter({ onJobSubmitted }: Props) {
-  const {
-    inputPath,
-    outputStem,
-    setOutputStem,
-    toFormat,
-    setToFormat,
-    converter,
-    setConverter,
-    availableFormats,
-    showConverter,
-    applyFile,
-    validate,
-  } = useConverterForm();
-
-  const { submit } = useConverterSubmit({
-    inputPath,
-    outputStem,
-    toFormat,
-    converter,
-    showConverter,
-    onJobSubmitted,
-  });
+  const { submit } = useConverterSubmit({ onJobSubmitted });
 
   return (
     <ToolPage
@@ -50,23 +28,8 @@ export function DocConverter({ onJobSubmitted }: Props) {
       }
     >
       <div className="flex flex-col gap-5">
-        <DocConverterDropZone
-          inputPath={inputPath}
-          validate={validate}
-          onFile={applyFile}
-        />
-        <ConvertingForm
-          inputPath={inputPath}
-          outputStem={outputStem}
-          setOutputStem={setOutputStem}
-          toFormat={toFormat}
-          setToFormat={setToFormat}
-          availableFormats={availableFormats}
-          showConverter={showConverter}
-          converter={converter}
-          setConverter={setConverter}
-          onSubmit={submit}
-        />
+        <DocConverterDropZone />
+        <ConvertingForm onSubmit={submit} />
       </div>
     </ToolPage>
   );

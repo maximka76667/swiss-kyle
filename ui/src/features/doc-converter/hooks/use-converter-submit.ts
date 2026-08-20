@@ -1,14 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
 import type { Tool } from "@/types/jobs";
-import type { DocFormat, Converter } from "@/features/doc-converter/lib/types";
+import type { Converter } from "@/features/doc-converter/lib/types";
+import {
+  useConverterStore,
+  selectShowConverter,
+} from "@/features/doc-converter/store/use-converter-store";
 
-interface UseDocConverterSubmitArgs {
-  inputPath: string | null;
-  outputStem: string;
-  toFormat: DocFormat;
-  converter: Converter;
-  showConverter: boolean;
+interface UseConverterSubmitArgs {
   onJobSubmitted: (
     id: string,
     tool: Tool,
@@ -18,26 +17,24 @@ interface UseDocConverterSubmitArgs {
 }
 
 /** Submits the current doc-converter selection as a conversion job. */
-export function useConverterSubmit({
-  inputPath,
-  outputStem,
-  toFormat,
-  converter,
-  showConverter,
-  onJobSubmitted,
-}: UseDocConverterSubmitArgs) {
-  async function submit() {
-    if (!inputPath) {
+export function useConverterSubmit({ onJobSubmitted }: UseConverterSubmitArgs) {
+  async function submit(converter: Converter) {
+    const { inputFile, outputStem, toFormat } = useConverterStore.getState();
+    const showConverter = selectShowConverter(useConverterStore.getState());
+
+    if (!inputFile) {
       toast.error("Pick a document file first");
       return;
     }
+
     if (!outputStem.trim()) {
       toast.error("Output title cannot be empty");
       return;
     }
+
     try {
       const id = await invoke<string>("submit_doc_convert_job", {
-        input: inputPath,
+        input: inputFile.filePath,
         outputStem: outputStem.trim(),
         toFormat,
         converter: showConverter ? converter : null,
@@ -45,7 +42,7 @@ export function useConverterSubmit({
       onJobSubmitted(
         id,
         "doc-converter",
-        inputPath,
+        inputFile.filePath,
         `${outputStem.trim()}.${toFormat}`,
       );
     } catch (e) {

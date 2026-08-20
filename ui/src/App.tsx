@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import { listen } from "@tauri-apps/api/event";
 import { TooltipProvider } from "@shadcn/components/ui/tooltip";
 import {
@@ -8,6 +8,7 @@ import {
   Sidebar,
 } from "@shadcn/components/ui/sidebar";
 import { ToolNav } from "@/components/tool-nav";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { JobHistory } from "@/features/job-history/components/job-history";
 import { DiagnosticsPage } from "@/features/diagnostics-page/components/diagnostics-page";
 import { TOOLS } from "@/lib/tools";
@@ -16,6 +17,7 @@ import { Toaster } from "@shadcn/components/ui/sonner";
 import type { JobStatus, JobStatusEvent, Tool, TrackedJob } from "@/types/jobs";
 
 function App() {
+  const location = useLocation();
   const [jobs, setJobs] = useState<TrackedJob[]>([]);
   const pendingEvents = useRef<Map<string, JobStatus>>(new Map());
 
@@ -77,16 +79,18 @@ function App() {
             style={{ "--sidebar-width": "480px" } as React.CSSProperties}
           >
             <SidebarInset>
-              <Routes>
-                {TOOLS.map(({ path, component: Component }) => (
-                  <Route
-                    key={path}
-                    path={path}
-                    element={<Component onJobSubmitted={handleJobSubmitted} />}
-                  />
-                ))}
-                <Route path="/diagnostics" element={<DiagnosticsPage />} />
-              </Routes>
+              <ErrorBoundary key={location.pathname}>
+                <Routes>
+                  {TOOLS.map(({ path, component: Component }) => (
+                    <Route
+                      key={path}
+                      path={path}
+                      element={<Component onJobSubmitted={handleJobSubmitted} />}
+                    />
+                  ))}
+                  <Route path="/diagnostics" element={<DiagnosticsPage />} />
+                </Routes>
+              </ErrorBoundary>
             </SidebarInset>
             <Sidebar side="right" collapsible="offcanvas">
               <JobHistory jobs={jobs} onRemove={handleRemoveJob} />

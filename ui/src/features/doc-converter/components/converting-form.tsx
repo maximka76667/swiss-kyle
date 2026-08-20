@@ -1,36 +1,35 @@
+import { useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { Button } from "@shadcn/components/ui/button";
 import { Label } from "@shadcn/components/ui/label";
 import { OutputTitleField } from "@/components/output-title-field";
 import { FORMAT_LABEL } from "@/features/doc-converter/constants/file-formats";
 import type { DocFormat, Converter } from "@/features/doc-converter/lib/types";
+import {
+  useConverterStore,
+  selectAvailableFormats,
+  selectShowConverter,
+} from "@/features/doc-converter/store/use-converter-store";
 
 interface ConvertingFormProps {
-  /** Renders nothing until a file is picked — `inputPath` also controls this component's own visibility, not just its content. */
-  inputPath: string | null;
-  outputStem: string;
-  setOutputStem: (v: string) => void;
-  toFormat: DocFormat;
-  setToFormat: (v: DocFormat) => void;
-  availableFormats: DocFormat[];
-  showConverter: boolean;
-  converter: Converter;
-  setConverter: (v: Converter) => void;
-  onSubmit: () => void;
+  onSubmit: (converter: Converter) => void;
 }
 
-export function ConvertingForm({
-  inputPath,
-  outputStem,
-  setOutputStem,
-  toFormat,
-  setToFormat,
-  availableFormats,
-  showConverter,
-  converter,
-  setConverter,
-  onSubmit,
-}: ConvertingFormProps) {
-  if (!inputPath) return null;
+/** Renders nothing until a file is selected in the store — visibility is handled internally, not by the caller. */
+export function ConvertingForm({ onSubmit }: ConvertingFormProps) {
+  const inputFile = useConverterStore((s) => s.inputFile);
+  const outputStem = useConverterStore((s) => s.outputStem);
+  const setOutputStem = useConverterStore((s) => s.setOutputStem);
+  const toFormat = useConverterStore((s) => s.toFormat);
+  const setToFormat = useConverterStore((s) => s.setToFormat);
+
+  // Needs a useShallow to prevent an infinite rerender loop.
+  const availableFormats = useConverterStore(useShallow(selectAvailableFormats));
+  const showConverter = useConverterStore(selectShowConverter);
+
+  const [converter, setConverter] = useState<Converter>("word");
+
+  if (!inputFile) return null;
 
   return (
     <>
@@ -73,7 +72,7 @@ export function ConvertingForm({
         </div>
       )}
 
-      <Button type="button" onClick={onSubmit}>
+      <Button type="button" onClick={() => onSubmit(converter)}>
         Convert
       </Button>
     </>

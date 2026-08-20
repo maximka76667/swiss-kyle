@@ -3,3 +3,8 @@ import type { EXTENSION_TO_FORMAT } from "@/features/doc-converter/constants/fil
 export type DocFormat = "md" | "docx" | "html" | "pdf";
 export type Converter = "word" | "libreoffice";
 export type InputExtension = keyof typeof EXTENSION_TO_FORMAT;
+
+export interface InputFile {
+  filePath: string;
+  extension: InputExtension;
+}
