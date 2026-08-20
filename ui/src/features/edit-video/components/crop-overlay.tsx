@@ -153,6 +153,31 @@ export function CropOverlay({
     // still intercepts every click over that whole area by default. Only
     // the crop rect and its handles opt back in with pointer-events-auto.
     <div ref={containerRef} className="pointer-events-none absolute inset-0">
+      {elRect && (
+        <>
+          <div
+            className="absolute inset-x-0 top-0 bg-black/60"
+            style={{ height: renderTop }}
+          />
+          <div
+            className="absolute inset-x-0 bottom-0 bg-black/60"
+            style={{ height: elRect.height - renderTop - renderHeight }}
+          />
+          <div
+            className="absolute left-0 bg-black/60"
+            style={{ top: renderTop, height: renderHeight, width: renderLeft }}
+          />
+          <div
+            className="absolute bg-black/60"
+            style={{
+              top: renderTop,
+              height: renderHeight,
+              left: renderLeft + renderWidth,
+              width: elRect.width - renderLeft - renderWidth,
+            }}
+          />
+        </>
+      )}
       <div
         className="pointer-events-auto absolute border border-white/70"
         style={{
