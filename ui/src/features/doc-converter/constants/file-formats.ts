@@ -1,4 +1,7 @@
-import type { DocFormat } from "@/features/doc-converter/lib/types";
+import type {
+  DocFormat,
+  InputExtension,
+} from "@/features/doc-converter/lib/types";
 
 export const FORMAT_LABEL: Record<DocFormat, string> = {
   md: "Markdown (.md)",
@@ -7,7 +10,7 @@ export const FORMAT_LABEL: Record<DocFormat, string> = {
   pdf: "PDF (.pdf)",
 };
 
-export const INPUT_EXT_TO_FORMAT: Record<string, DocFormat> = {
+export const EXTENSION_TO_FORMAT: Record<string, DocFormat> = {
   md: "md",
   markdown: "md",
   docx: "docx",
@@ -18,4 +21,12 @@ export const INPUT_EXT_TO_FORMAT: Record<string, DocFormat> = {
   htm: "html",
 };
 
-export const OFFICE_EXTS = new Set(["doc", "docx", "odt", "rtf"]);
+// Word-processor formats (not strictly Microsoft — .odt is LibreOffice's own)
+// that convert to PDF via an external engine, so the user has to pick which
+// one: Word or LibreOffice.
+export const OFFICE_EXTENSIONS: Set<InputExtension> = new Set([
+  "doc",
+  "docx",
+  "odt",
+  "rtf",
+] as const);

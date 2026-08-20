@@ -18,7 +18,7 @@ interface UseDocConverterSubmitArgs {
 }
 
 /** Submits the current doc-converter selection as a conversion job. */
-export function useDocConverterSubmit({
+export function useConverterSubmit({
   inputPath,
   outputStem,
   toFormat,

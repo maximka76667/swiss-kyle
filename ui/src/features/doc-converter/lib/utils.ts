@@ -1,4 +1,4 @@
-import { INPUT_EXT_TO_FORMAT } from "@/features/doc-converter/constants/file-formats";
+import { EXTENSION_TO_FORMAT } from "@/features/doc-converter/constants/file-formats";
 import type {
   DocFormat,
   InputExtension,
@@ -8,7 +8,7 @@ import type {
 export function getSupportedOutputFormats(
   inputExtension: InputExtension,
 ): DocFormat[] {
-  const inputFmt = INPUT_EXT_TO_FORMAT[inputExtension];
+  const inputFmt = EXTENSION_TO_FORMAT[inputExtension];
   const all: DocFormat[] = ["md", "docx", "html", "pdf"];
   return all.filter((f) => f !== inputFmt);
 }
@@ -16,5 +16,5 @@ export function getSupportedOutputFormats(
 export function isSupportedInputExtension(
   extension: string,
 ): extension is InputExtension {
-  return extension in INPUT_EXT_TO_FORMAT;
+  return extension in EXTENSION_TO_FORMAT;
 }

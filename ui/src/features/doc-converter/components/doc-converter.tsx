@@ -1,18 +1,10 @@
-import { Button } from "@shadcn/components/ui/button";
-import { Label } from "@shadcn/components/ui/label";
 import { ToolPage } from "@/components/tool-page";
 import { OutputFolderLink } from "@/components/output-folder-link";
-import { FileDropZone } from "@/components/file-drop-zone";
-import { OutputTitleField } from "@/components/output-title-field";
-import { basename } from "@/lib/utils";
+import { DocConverterDropZone } from "@/features/doc-converter/components/doc-converter-drop-zone";
+import { ConvertingForm } from "@/features/doc-converter/components/converting-form";
 import type { Tool } from "@/types/jobs";
-import type { DocFormat, Converter } from "@/features/doc-converter/lib/types";
-import {
-  FORMAT_LABEL,
-  INPUT_EXT_TO_FORMAT,
-} from "@/features/doc-converter/constants/file-formats";
-import { useDocConverterForm } from "@/features/doc-converter/hooks/use-doc-converter-form";
-import { useDocConverterSubmit } from "@/features/doc-converter/hooks/use-doc-converter-submit";
+import { useConverterForm } from "@/features/doc-converter/hooks/use-converter-form";
+import { useConverterSubmit } from "@/features/doc-converter/hooks/use-converter-submit";
 
 interface Props {
   onJobSubmitted: (
@@ -36,9 +28,9 @@ export function DocConverter({ onJobSubmitted }: Props) {
     showConverter,
     applyFile,
     validate,
-  } = useDocConverterForm();
+  } = useConverterForm();
 
-  const { submit } = useDocConverterSubmit({
+  const { submit } = useConverterSubmit({
     inputPath,
     outputStem,
     toFormat,
@@ -58,65 +50,23 @@ export function DocConverter({ onJobSubmitted }: Props) {
       }
     >
       <div className="flex flex-col gap-5">
-        <FileDropZone
-          multiple={false}
-          dialogFilter={{
-            name: "Documents",
-            extensions: Object.keys(INPUT_EXT_TO_FORMAT),
-          }}
+        <DocConverterDropZone
+          inputPath={inputPath}
           validate={validate}
-          onFiles={([path]) => applyFile(path)}
-          prompt="Drag & drop a document here"
-          hint="or click to browse"
-          selectedLabel={inputPath ? basename(inputPath) : null}
+          onFile={applyFile}
         />
-
-        {inputPath && (
-          <>
-            <OutputTitleField
-              id="doc-output-stem"
-              value={outputStem}
-              onChange={setOutputStem}
-            />
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="doc-to-format">Convert to</Label>
-              <select
-                id="doc-to-format"
-                title="Select output format"
-                value={toFormat}
-                onChange={(e) => setToFormat(e.target.value as DocFormat)}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                {availableFormats.map((f) => (
-                  <option key={f} value={f}>
-                    {FORMAT_LABEL[f]}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {showConverter && (
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="doc-converter">PDF converter</Label>
-                <select
-                  id="doc-converter"
-                  title="Select PDF converter"
-                  value={converter}
-                  onChange={(e) => setConverter(e.target.value as Converter)}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  <option value="word">Microsoft Word (Windows only)</option>
-                  <option value="libreoffice">LibreOffice</option>
-                </select>
-              </div>
-            )}
-
-            <Button type="button" onClick={submit}>
-              Convert
-            </Button>
-          </>
-        )}
+        <ConvertingForm
+          inputPath={inputPath}
+          outputStem={outputStem}
+          setOutputStem={setOutputStem}
+          toFormat={toFormat}
+          setToFormat={setToFormat}
+          availableFormats={availableFormats}
+          showConverter={showConverter}
+          converter={converter}
+          setConverter={setConverter}
+          onSubmit={submit}
+        />
       </div>
     </ToolPage>
   );

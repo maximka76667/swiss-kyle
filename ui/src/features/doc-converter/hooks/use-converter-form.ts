@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { basename } from "@/lib/utils";
 import {
-  INPUT_EXT_TO_FORMAT,
-  OFFICE_EXTS,
+  EXTENSION_TO_FORMAT,
+  OFFICE_EXTENSIONS,
 } from "@/features/doc-converter/constants/file-formats";
 import {
   getSupportedOutputFormats,
@@ -15,7 +15,7 @@ import type {
 } from "@/features/doc-converter/lib/types";
 
 /** Owns the selected file, target format, and converter choice for the doc-converter form. */
-export function useDocConverterForm() {
+export function useConverterForm() {
   const [inputPath, setInputPath] = useState<string | null>(null);
   const [inputExtension, setInputExtension] = useState<InputExtension | null>(
     null,
@@ -29,7 +29,7 @@ export function useDocConverterForm() {
     : [];
   const showConverter =
     inputExtension !== null &&
-    OFFICE_EXTS.has(inputExtension) &&
+    OFFICE_EXTENSIONS.has(inputExtension) &&
     toFormat === "pdf";
 
   function applyFile(path: string) {
@@ -53,7 +53,7 @@ export function useDocConverterForm() {
         accepted: [],
         reject: {
           message: `Not a supported document file: ${basename(path)}`,
-          description: `Expected one of: ${Object.keys(INPUT_EXT_TO_FORMAT)
+          description: `Expected one of: ${Object.keys(EXTENSION_TO_FORMAT)
             .map((e) => `.${e}`)
             .join(", ")}`,
         },
