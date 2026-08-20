@@ -107,10 +107,16 @@ jobs:
 
       # webkit2gtk-driver provides WebKitWebDriver, which tauri-driver drives;
       # xvfb backs the virtual display xvfb-run gives the whole suite below.
+      # gstreamer1.0-plugins-{good,bad,ugly} + gstreamer1.0-libav give
+      # WebKitGTK's <video> an actual H.264 decoder (avdec_h264/openh264) —
+      # without them GStreamer never negotiates real frames for the mp4
+      # fixtures, videoWidth/videoHeight stay 0, and every control gated on
+      # metadataLoaded (edit-video.tsx) is disabled forever. Base package
+      # alone only covers demuxing, not decode.
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf webkit2gtk-driver xvfb
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf webkit2gtk-driver xvfb gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -146,6 +152,7 @@ jobs:
           dpkg -s webkit2gtk-driver libwebkit2gtk-4.1-0 xvfb 2>&1 | grep -E '^(Package|Version):'
           echo "xvfb-run: $(command -v xvfb-run)"
           echo "DISPLAY=$DISPLAY"
+          echo "h264 decoder: $(gst-inspect-1.0 avdec_h264 2>&1 | grep -m1 -E 'Plugin Details|No such element')"
 
       # Self-sufficient: rebuilds the worker sidecar, downloads the other
       # pinned tool binaries (ffmpeg/pandoc/typst/pdfcpu/nats-server) it
