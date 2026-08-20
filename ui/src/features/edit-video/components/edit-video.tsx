@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@shadcn/components/ui/button";
 import { Input } from "@shadcn/components/ui/input";
 import { Label } from "@shadcn/components/ui/label";
-import { VideoPlayer } from "@/components/video-player";
+import { VideoPlayer } from "@/features/edit-video/components/video-player";
 import { ToolPage } from "@/components/tool-page";
 import { OutputFolderLink } from "@/components/output-folder-link";
 import { FileDropZone } from "@/components/file-drop-zone";

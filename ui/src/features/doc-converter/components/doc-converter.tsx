@@ -1,6 +1,3 @@
-import { useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { toast } from "sonner";
 import { Button } from "@shadcn/components/ui/button";
 import { Label } from "@shadcn/components/ui/label";
 import { ToolPage } from "@/components/tool-page";
@@ -9,35 +6,13 @@ import { FileDropZone } from "@/components/file-drop-zone";
 import { OutputTitleField } from "@/components/output-title-field";
 import { basename } from "@/lib/utils";
 import type { Tool } from "@/types/jobs";
-
-type DocFormat = "md" | "docx" | "html" | "pdf";
-type Converter = "word" | "libreoffice";
-
-const FORMAT_LABEL: Record<DocFormat, string> = {
-  md: "Markdown (.md)",
-  docx: "Word Document (.docx)",
-  html: "HTML (.html)",
-  pdf: "PDF (.pdf)",
-};
-
-const INPUT_EXT_TO_FORMAT: Record<string, DocFormat> = {
-  md: "md",
-  markdown: "md",
-  docx: "docx",
-  doc: "docx",
-  odt: "docx",
-  rtf: "docx",
-  html: "html",
-  htm: "html",
-};
-
-const OFFICE_EXTS = new Set(["doc", "docx", "odt", "rtf"]);
-
-function outputFormats(inputExt: string): DocFormat[] {
-  const inputFmt = INPUT_EXT_TO_FORMAT[inputExt];
-  const all: DocFormat[] = ["md", "docx", "html", "pdf"];
-  return all.filter((f) => f !== inputFmt);
-}
+import type { DocFormat, Converter } from "@/features/doc-converter/lib/types";
+import {
+  FORMAT_LABEL,
+  INPUT_EXT_TO_FORMAT,
+} from "@/features/doc-converter/constants/file-formats";
+import { useDocConverterForm } from "@/features/doc-converter/hooks/use-doc-converter-form";
+import { useDocConverterSubmit } from "@/features/doc-converter/hooks/use-doc-converter-submit";
 
 interface Props {
   onJobSubmitted: (
@@ -49,70 +24,28 @@ interface Props {
 }
 
 export function DocConverter({ onJobSubmitted }: Props) {
-  const [inputPath, setInputPath] = useState<string | null>(null);
-  const [inputExt, setInputExt] = useState<string>("");
-  const [outputStem, setOutputStem] = useState("output");
-  const [toFormat, setToFormat] = useState<DocFormat>("pdf");
-  const [converter, setConverter] = useState<Converter>("word");
+  const {
+    inputPath,
+    outputStem,
+    setOutputStem,
+    toFormat,
+    setToFormat,
+    converter,
+    setConverter,
+    availableFormats,
+    showConverter,
+    applyFile,
+    validate,
+  } = useDocConverterForm();
 
-  const availableFormats = inputExt ? outputFormats(inputExt) : [];
-  const showConverter = OFFICE_EXTS.has(inputExt) && toFormat === "pdf";
-
-  function applyFile(path: string) {
-    const ext = path.split(".").pop()?.toLowerCase() ?? "";
-    const stem = basename(path).replace(/\.[^.]+$/, "");
-    setInputPath(path);
-    setInputExt(ext);
-    setOutputStem(stem);
-    const formats = outputFormats(ext);
-    if (formats.length > 0 && !formats.includes(toFormat)) {
-      setToFormat(formats[0]);
-    }
-  }
-
-  function validate(paths: string[]) {
-    const path = paths[0];
-    const ext = path.split(".").pop()?.toLowerCase() ?? "";
-    if (!(ext in INPUT_EXT_TO_FORMAT)) {
-      return {
-        accepted: [],
-        reject: {
-          message: `Not a supported document file: ${basename(path)}`,
-          description: `Expected one of: ${Object.keys(INPUT_EXT_TO_FORMAT)
-            .map((e) => `.${e}`)
-            .join(", ")}`,
-        },
-      };
-    }
-    return { accepted: [path] };
-  }
-
-  async function submit() {
-    if (!inputPath) {
-      toast.error("Pick a document file first");
-      return;
-    }
-    if (!outputStem.trim()) {
-      toast.error("Output title cannot be empty");
-      return;
-    }
-    try {
-      const id = await invoke<string>("submit_doc_convert_job", {
-        input: inputPath,
-        outputStem: outputStem.trim(),
-        toFormat,
-        converter: showConverter ? converter : null,
-      });
-      onJobSubmitted(
-        id,
-        "doc-converter",
-        inputPath,
-        `${outputStem.trim()}.${toFormat}`,
-      );
-    } catch (e) {
-      toast.error(`Failed to submit job: ${e}`);
-    }
-  }
+  const { submit } = useDocConverterSubmit({
+    inputPath,
+    outputStem,
+    toFormat,
+    converter,
+    showConverter,
+    onJobSubmitted,
+  });
 
   return (
     <ToolPage

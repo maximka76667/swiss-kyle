@@ -1,17 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Play, Pause, Volume2, VolumeX } from "lucide-react";
-import { Button } from "@shadcn/components/ui/button";
-import { Slider } from "@shadcn/components/ui/slider";
-import { TimelineSlider } from "@/components/timeline-slider";
-import { CropOverlay } from "@/components/crop-overlay";
+import { TimelineSlider } from "@/features/edit-video/components/timeline-slider";
+import { VideoSection } from "@/features/edit-video/components/video-section";
+import { VideoControls } from "@/features/edit-video/components/video-controls";
 import type { CropRect } from "@/types/jobs";
-
-function formatTime(secs: number): string {
-  const m = Math.floor(secs / 60);
-  const s = Math.floor(secs % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
 
 interface VideoPlayerProps {
   filePath: string;
@@ -178,69 +170,26 @@ export function VideoPlayer({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="relative">
-        <video
-          ref={videoRef}
-          className="aspect-video w-full rounded-md bg-black"
-          preload="metadata"
-          src={src || undefined}
-        />
-        {cropRect && videoWidth > 0 && videoHeight > 0 && (
-          <CropOverlay
-            videoWidth={videoWidth}
-            videoHeight={videoHeight}
-            crop={cropRect}
-            onChange={onCropChange}
-          />
-        )}
-      </div>
+      <VideoSection
+        videoRef={videoRef}
+        src={src}
+        cropRect={cropRect}
+        videoWidth={videoWidth}
+        videoHeight={videoHeight}
+        onCropChange={onCropChange}
+      />
       {duration > 0 && (
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon-sm"
-            onClick={togglePlay}
-            aria-label={isPlaying ? "Pause" : "Play"}
-          >
-            {isPlaying ? <Pause /> : <Play />}
-          </Button>
-          <Slider
-            className="flex-1"
-            min={0}
-            max={duration}
-            step={duration / 100}
-            value={currentTime}
-            onValueChange={(v) => seek(v as number)}
-            aria-label="Seek"
-          />
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {formatTime(currentTime)} / {formatTime(duration)}
-          </span>
-          <div className="group/volume relative flex items-center">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              onClick={toggleMute}
-              aria-label={isMuted || volume === 0 ? "Unmute" : "Mute"}
-            >
-              {isMuted || volume === 0 ? <VolumeX /> : <Volume2 />}
-            </Button>
-            {/* pb-2, not mb-2 — keeps the gap inside the hoverable box. */}
-            <div className="absolute bottom-full left-1/2 z-20 hidden -translate-x-1/2 pb-2 group-hover/volume:flex group-focus-within/volume:flex">
-              <div className="rounded-md border border-border bg-popover p-2 shadow-md">
-                <Slider
-                  orientation="vertical"
-                  className="h-24"
-                  value={isMuted ? 0 : volume * 100}
-                  onValueChange={(v) => changeVolume((v as number) / 100)}
-                  aria-label="Volume"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+        <VideoControls
+          isPlaying={isPlaying}
+          currentTime={currentTime}
+          duration={duration}
+          volume={volume}
+          isMuted={isMuted}
+          onTogglePlay={togglePlay}
+          onSeek={seek}
+          onToggleMute={toggleMute}
+          onChangeVolume={changeVolume}
+        />
       )}
       {duration > 0 && (
         <TimelineSlider

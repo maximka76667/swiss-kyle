@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { clamp, letterbox } from "@/lib/utils";
+import { clamp, letterbox } from "@/features/edit-video/lib/utils";
 import { CropRect } from "@/types/jobs";
 
 interface CropOverlayProps {

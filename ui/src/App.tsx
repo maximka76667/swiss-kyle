@@ -8,8 +8,8 @@ import {
   Sidebar,
 } from "@shadcn/components/ui/sidebar";
 import { ToolNav } from "@/components/tool-nav";
-import { JobHistory } from "@/components/job-history";
-import { DiagnosticsPage } from "@/components/diagnostics-page";
+import { JobHistory } from "@/features/job-history/components/job-history";
+import { DiagnosticsPage } from "@/features/diagnostics-page/components/diagnostics-page";
 import { TOOLS } from "@/lib/tools";
 import { FloatingSidebarTrigger } from "@/components/floating-sidebar-trigger";
 import { Toaster } from "@shadcn/components/ui/sonner";

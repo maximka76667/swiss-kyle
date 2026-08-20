@@ -1,8 +1,8 @@
 import type { ComponentType } from "react";
 import { Scissors, ArrowLeftRight, Combine } from "lucide-react";
-import { EditVideo } from "@/components/edit-video";
-import { DocConverter } from "@/components/doc-converter";
-import { MergePdfs } from "@/components/merge-pdfs";
+import { EditVideo } from "@/features/edit-video/components/edit-video";
+import { DocConverter } from "@/features/doc-converter/components/doc-converter";
+import { MergePdfs } from "@/features/merge-pdfs/components/merge-pdfs";
 import type { Tool } from "@/types/jobs";
 
 export interface ToolComponentProps {
