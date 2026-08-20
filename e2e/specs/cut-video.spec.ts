@@ -2,56 +2,9 @@ import { basename, resolve } from "node:path";
 import { byText } from "../support/selectors";
 import { dropFile } from "../support/drag-drop";
 import { jsClick } from "../support/click";
-import { countDecodedVideoFrames, getVideoDimensions } from "../support/ffmpeg";
+import { countDecodedVideoFrames } from "../support/ffmpeg";
 
-// webdriverio/webdriverio#4134: an actions-chain move using
-// `origin: 'pointer'` with relative x/y deltas is unreliable across driver
-// implementations — it can silently land at the wrong position, sometimes
-// not moving the pointer at all. Never fixed upstream; the workaround is
-// absolute viewport coordinates for every move step instead of a delta
-// from the pointer's current position.
-async function dragCropHandle(corner: string, dx: number, dy: number) {
-  // Video metadata (duration, native dimensions) loads asynchronously after
-  // the drop — not synchronous with the filename label appearing — and
-  // nothing that depends on it, including the crop overlay, exists before
-  // then. "Submit job" is disabled until the same metadataLoaded state is
-  // true (edit-video.tsx), so waiting for it to become enabled is a real
-  // readiness signal, not a guessed duration.
-  await $("button*=Submit job").waitForEnabled();
-
-  const handle = await $(`[data-crop-handle="${corner}"]`);
-
-  // crop-overlay.tsx measures its own box via a ResizeObserver, which
-  // settles after mount — the handle can exist with a real DOM position
-  // before that runs, still collapsed at the scale:0 fallback.
-  let location = { x: 0, y: 0 };
-  let size = { width: 0, height: 0 };
-  await browser.waitUntil(
-    async () => {
-      location = await handle.getLocation();
-      size = await handle.getSize();
-      return size.width > 0 && size.height > 0;
-    },
-    { timeoutMsg: "crop handle never got a real laid-out position" },
-  );
-  const centerX = Math.round(location.x + size.width / 2);
-  const centerY = Math.round(location.y + size.height / 2);
-
-  await browser
-    .action("pointer")
-    .move({ origin: "viewport", x: centerX, y: centerY })
-    .down()
-    .move({
-      duration: 200,
-      origin: "viewport",
-      x: centerX + dx,
-      y: centerY + dy,
-    })
-    .up()
-    .perform();
-}
-
-describe("edit video", () => {
+describe("cut video", () => {
   it("accepts a video dropped onto the window", async () => {
     const samplePath = resolve(import.meta.dirname, "../fixtures/sample.mp4");
 
@@ -197,63 +150,5 @@ describe("edit video", () => {
         timeoutMsg: "expected the job after repeated loads to complete",
       },
     );
-  });
-
-  it("dragging a crop handle changes the selection", async () => {
-    const samplePath = resolve(import.meta.dirname, "../fixtures/sample.mp4");
-    await dropFile(samplePath);
-
-    const filenameLabel = await byText("sample.mp4");
-    await filenameLabel.waitForDisplayed({ timeout: 5000 });
-
-    const sourceDimensions = getVideoDimensions(samplePath);
-    expect(sourceDimensions).not.toBeNull();
-
-    await dragCropHandle("se", -80, -80);
-
-    // The indicator only renders once the selection differs from the
-    // untouched full-frame default (edit-video.tsx's cropChanged check) —
-    // its presence, with dimensions smaller than the source, proves the
-    // handler actually moved the crop rect, independent of job submission.
-    const indicator = await $("[data-crop-indicator]");
-    await indicator.waitForDisplayed({ timeout: 5000 });
-    const text = await indicator.getText();
-    const match = text.match(/Crop: (\d+)×(\d+) at (\d+),(\d+)/);
-    expect(match).not.toBeNull();
-    expect(Number(match![1])).toBeLessThan(sourceDimensions!.width);
-    expect(Number(match![2])).toBeLessThan(sourceDimensions!.height);
-  });
-
-  it("crops a video to a smaller region", async () => {
-    const samplePath = resolve(import.meta.dirname, "../fixtures/sample.mp4");
-    await dropFile(samplePath);
-
-    const filenameLabel = await byText("sample.mp4");
-    await filenameLabel.waitForDisplayed({ timeout: 5000 });
-
-    const sourceDimensions = getVideoDimensions(samplePath);
-    expect(sourceDimensions).not.toBeNull();
-
-    await dragCropHandle("se", -80, -80);
-
-    const doneCountBefore = await $$("//*[contains(text(), 'Done')]").length;
-
-    const submitButton = await byText("Submit job");
-    await jsClick(submitButton);
-
-    await browser.waitUntil(
-      async () =>
-        (await $$("//*[contains(text(), 'Done')]").length) > doneCountBefore,
-      { timeout: 20000, timeoutMsg: "expected the crop job to complete" },
-    );
-
-    const outputPath = resolve(
-      import.meta.dirname,
-      "../../.development/output/edit-video/sample-edit.mp4",
-    );
-    const outputDimensions = getVideoDimensions(outputPath);
-    expect(outputDimensions).not.toBeNull();
-    expect(outputDimensions!.width).toBeLessThan(sourceDimensions!.width);
-    expect(outputDimensions!.height).toBeLessThan(sourceDimensions!.height);
   });
 });

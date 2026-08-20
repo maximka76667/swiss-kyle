@@ -149,10 +149,9 @@ export function CropOverlay({
 
   return (
     // pointer-events-none here is required, not decorative: this div's box
-    // otherwise fully covers the <video>, including its native controls
-    // bar, and — even fully transparent — still intercepts every click
-    // over that whole area by default. Only the crop rect and its handles
-    // opt back in with pointer-events-auto.
+    // otherwise fully covers the <video> and — even fully transparent —
+    // still intercepts every click over that whole area by default. Only
+    // the crop rect and its handles opt back in with pointer-events-auto.
     <div ref={containerRef} className="pointer-events-none absolute inset-0">
       <div
         className="pointer-events-auto absolute border border-white/70"
@@ -171,7 +170,11 @@ export function CropOverlay({
           <div
             key={corner}
             data-crop-handle={corner}
-            className={`absolute z-10 h-5 w-5 border-white ${cornerCursor[corner]} ${cornerPosition[corner]}`}
+            // drop-shadow follows the border's actual rendered shape (unlike
+            // box-shadow, which would just outline the div's full invisible
+            // bounding box) — a dark rim around the white L itself, so it
+            // stays visible over light/white video content.
+            className={`absolute z-10 h-5 w-5 border-white [filter:drop-shadow(0_0_1px_black)_drop-shadow(0_0_1px_black)] ${cornerCursor[corner]} ${cornerPosition[corner]}`}
             onPointerDown={(e) => startDrag(e)}
             onPointerMove={(e) => handleCornerDrag(corner, e)}
           />
