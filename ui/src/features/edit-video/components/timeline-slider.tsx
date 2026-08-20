@@ -14,6 +14,7 @@ interface TimelineSliderProps {
   currentTime: number;
   onChange: (start: number, end: number) => void;
   onSeek: (secs: number) => void;
+  disabled?: boolean;
 }
 
 export function TimelineSlider({
@@ -23,6 +24,7 @@ export function TimelineSlider({
   currentTime,
   onChange,
   onSeek,
+  disabled = false,
 }: TimelineSliderProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -36,6 +38,7 @@ export function TimelineSlider({
   }
 
   function handleHandlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (disabled) return;
     e.preventDefault();
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -45,7 +48,7 @@ export function TimelineSlider({
     e: React.PointerEvent<HTMLDivElement>,
     applyChange: (secs: number) => void,
   ) {
-    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+    if (disabled || !e.currentTarget.hasPointerCapture(e.pointerId)) return;
     const rect = containerRef.current!.getBoundingClientRect();
     applyChange(secsAt(rect, e.clientX));
   }
@@ -54,10 +57,16 @@ export function TimelineSlider({
     <div className="flex flex-col gap-1.5">
       <div
         ref={containerRef}
-        className="relative h-12 select-none cursor-pointer"
-        onPointerDown={(e) =>
-          onSeek(secsAt(e.currentTarget.getBoundingClientRect(), e.clientX))
-        }
+        data-disabled={disabled || undefined}
+        // pointer-events-none is the primary guard (blocks every handle and
+        // the seek-on-click below at the browser level, not just in our own
+        // handlers) — the per-handler `disabled` checks are defense in
+        // depth, not the only thing preventing interaction.
+        className={`relative h-12 select-none ${disabled ? "pointer-events-none cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+        onPointerDown={(e) => {
+          if (disabled) return;
+          onSeek(secsAt(e.currentTarget.getBoundingClientRect(), e.clientX));
+        }}
       >
         {/* Track */}
         <div className="absolute inset-0 overflow-hidden rounded bg-muted">

@@ -1,4 +1,4 @@
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import { byText } from "../support/selectors";
 import { dropFile } from "../support/drag-drop";
 import { jsClick } from "../support/click";
@@ -47,7 +47,7 @@ describe("cut video", () => {
 
   it("keeps the video stream when cutting a real phone-recorded clip", async () => {
     // This exact clip is what originally surfaced a real bug (fixed in
-    // 8b35908, see cut_video.rs:33-43): phone recordings can space
+    // 8b35908, see edit_video.rs, formerly cut_video.rs): phone recordings can space
     // keyframes far enough apart that a short `-c copy` cut contains none
     // at all, so ffmpeg wrote an audio-only file and still exited 0 — a
     // "Done" status can't tell that apart from a real cut, only decoding
@@ -83,8 +83,72 @@ describe("cut video", () => {
 
     const outputPath = resolve(
       import.meta.dirname,
-      "../../.development/output/cut-video/phone-sparse-keyframes-cut.mp4",
+      "../../.development/output/edit-video/phone-sparse-keyframes-edit.mp4",
     );
     expect(countDecodedVideoFrames(outputPath)).toBeGreaterThan(0);
+  });
+
+  it("submits successfully without touching any controls", async () => {
+    // Default/untouched job: drop a video, change nothing (no trim, no
+    // crop), and submit as soon as it's possible to. Regresses if metadata
+    // loading is slow enough to make "Submit job" feel stuck disabled, or
+    // if an untouched submission is broken/slow for some other reason.
+    const samplePath = resolve(import.meta.dirname, "../fixtures/sample.mp4");
+    await dropFile(samplePath);
+
+    const filenameLabel = await byText("sample.mp4");
+    await filenameLabel.waitForDisplayed({ timeout: 5000 });
+
+    const submitButton = await $("button*=Submit job");
+    await submitButton.waitForEnabled({ timeout: 10000 });
+
+    const doneCountBefore = await $$("//*[contains(text(), 'Done')]").length;
+    await jsClick(submitButton);
+
+    await browser.waitUntil(
+      async () =>
+        (await $$("//*[contains(text(), 'Done')]").length) > doneCountBefore,
+      { timeout: 20000, timeoutMsg: "expected the untouched job to complete" },
+    );
+  });
+
+  it("stays usable after loading several videos in a row", async () => {
+    // Drop one video, then another, then another — without waiting for any
+    // of the earlier ones to finish processing. Each new drop resets
+    // metadata-derived state (edit-video.tsx's applyFile); this must not
+    // leave "Submit job" or the trim inputs permanently stuck disabled once
+    // the *latest* video's own metadata has loaded.
+    const paths = [
+      resolve(import.meta.dirname, "../fixtures/sample.mp4"),
+      resolve(import.meta.dirname, "../fixtures/phone-sparse-keyframes.mp4"),
+      resolve(import.meta.dirname, "../fixtures/sample.mp4"),
+    ];
+
+    const submitButton = await $("button*=Submit job");
+    const endSecsInput = await $("#end-secs");
+
+    for (const path of paths) {
+      await dropFile(path);
+
+      const label = await byText(basename(path));
+      await label.waitForDisplayed({ timeout: 5000 });
+
+      await submitButton.waitForEnabled({ timeout: 10000 });
+      expect(await endSecsInput.isEnabled()).toBe(true);
+    }
+
+    // Submit whichever video ended up loaded last and confirm the pipeline
+    // still actually works, not just that the button looks enabled.
+    const doneCountBefore = await $$("//*[contains(text(), 'Done')]").length;
+    await jsClick(submitButton);
+
+    await browser.waitUntil(
+      async () =>
+        (await $$("//*[contains(text(), 'Done')]").length) > doneCountBefore,
+      {
+        timeout: 20000,
+        timeoutMsg: "expected the job after repeated loads to complete",
+      },
+    );
   });
 });

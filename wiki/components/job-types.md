@@ -1,11 +1,11 @@
 # Job Types
 
 **Type**: component
-**Summary**: All shared message types for the NATS job pipeline: `JobEnvelope` (wire format), `Job`/`CutVideo`/`ConvertDocument` (job payloads), and `JobStatus`/`StatusEvent` (progress events).
+**Summary**: All shared message types for the NATS job pipeline: `JobEnvelope` (wire format), `Job`/`EditVideo`/`ConvertDocument` (job payloads), and `JobStatus`/`StatusEvent` (progress events).
 **Tags**: #component #job-model #status-events
 **Sources**: [[crates/shared/src/lib.rs]]
-**Related**: [[wiki/components/publisher]], [[wiki/components/worker]], [[wiki/architecture/system-overview]]
-**Last Updated**: 2026-07-02
+**Related**: [[wiki/components/publisher]], [[wiki/components/worker]], [[wiki/components/frontend]], [[wiki/architecture/system-overview]]
+**Last Updated**: 2026-08-19
 
 ---
 
@@ -36,15 +36,25 @@ Every message on the `jobs` JetStream subject is a `JobEnvelope`. The `id` trave
 
 ```rust
 pub enum Job {
-    CutVideo(CutVideo),
+    EditVideo(EditVideo),
     ConvertDocument(ConvertDocument),
 }
 
-pub struct CutVideo {
+pub struct EditVideo {
     pub input: String,
     pub output: String,
     pub start_secs: f64,
     pub end_secs: f64,
+    pub crop: Option<CropRect>,
+}
+
+// Native source-video pixel units, computed client-side from the video
+// element's own videoWidth/videoHeight — the worker never needs ffprobe.
+pub struct CropRect {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
 }
 
 pub struct ConvertDocument {
@@ -95,7 +105,7 @@ Status events use a plain NATS subject (not JetStream) because durability is not
 
 ## Known Issues / Tech Debt
 
-`CutVideo.output` is a bare filename while `ConvertDocument` uses `output_stem` + a `DocFormat` extension — the two variants name their output differently, which the worker and frontend each special-case.
+`EditVideo.output` is a bare filename while `ConvertDocument` uses `output_stem` + a `DocFormat` extension — the two variants name their output differently, which the worker and frontend each special-case.
 
 ## Related
 

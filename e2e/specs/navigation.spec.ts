@@ -20,8 +20,8 @@ describe("navigation", () => {
     await marker.waitForDisplayed({ timeout: 5000 });
   });
 
-  it("opens Cut Video", async () => {
-    await openTool("Cut Video");
+  it("opens Edit Video", async () => {
+    await openTool("Edit Video");
     const marker = await byText("Drag & drop a video here");
     await marker.waitForDisplayed({ timeout: 5000 });
   });

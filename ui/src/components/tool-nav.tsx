@@ -1,5 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Scissors, ArrowLeftRight, Combine, Activity } from "lucide-react";
+import { Activity } from "lucide-react";
+import { TOOLS } from "@/lib/tools";
 import {
   Sidebar,
   SidebarContent,
@@ -14,12 +15,6 @@ import {
   SidebarTrigger,
 } from "@shadcn/components/ui/sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
-
-const TOOLS: { path: string; label: string; icon: React.ElementType }[] = [
-  { path: "/cut-video", label: "Cut Video", icon: Scissors },
-  { path: "/doc-converter", label: "Doc Converter", icon: ArrowLeftRight },
-  { path: "/merge-pdfs", label: "Merge PDFs", icon: Combine },
-];
 
 const OTHER: { path: string; label: string; icon: React.ElementType }[] = [
   { path: "/diagnostics", label: "Diagnostics", icon: Activity },

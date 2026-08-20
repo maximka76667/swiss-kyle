@@ -5,7 +5,7 @@
 **Tags**: #component #tauri #sidecar #nats
 **Sources**: [[src-tauri/src/lib.rs]], [[src-tauri/src/pdfcpu.rs]], [[src-tauri/Cargo.toml]]
 **Related**: [[wiki/components/job-types]], [[wiki/components/worker]], [[wiki/components/video-server]], [[wiki/components/frontend]], [[wiki/decisions/adr-001-local-only]], [[wiki/decisions/adr-004-private-sidecar-resources]], [[wiki/issues/e2e-sidecars-linux-close-and-worker-match]], [[wiki/issues/pdfcpu-merge-refuses-overwrite]]
-**Last Updated**: 2026-08-07
+**Last Updated**: 2026-08-19
 
 ---
 
@@ -31,7 +31,7 @@ Any resolution/spawn failure at any step calls `fatal()`, which kills already-sp
 
 | Command                  | Signature                                                     | Purpose                                                                                                                                                                             |
 | ------------------------ | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `submit_cut_job`         | `(input, output, start_secs, end_secs) → Result<String>`      | Wraps args in `JobEnvelope::CutVideo`, publishes via `Publisher`, returns the job ULID                                                                                              |
+| `submit_edit_video_job`  | `(input, output, start_secs, end_secs, crop) → Result<String>`| Wraps args in `JobEnvelope::EditVideo`, publishes via `Publisher`, returns the job ULID. `crop: Option<CropRect>` (native pixel units) is omitted unless the frontend's crop selection differs from the untouched full-frame default |
 | `submit_doc_convert_job` | `(input, output_stem, to_format, converter) → Result<String>` | Wraps args in `JobEnvelope::ConvertDocument`, publishes, returns the job ULID                                                                                                       |
 | `submit_merge_pdfs_job`  | `(inputs, output_stem) → Result<String>`                      | Wraps args in `JobEnvelope::MergePdfs` (requires ≥2 inputs), publishes, returns the job ULID                                                                                        |
 | `get_pdf_page_count`     | `(path) → Result<u32>`                                        | Runs `pdfcpu info --json` (blocking, off the async runtime) for the merge-order picker UI; no rasterization capability, so this is the closest thing to a thumbnail count available |

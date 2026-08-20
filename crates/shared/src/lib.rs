@@ -61,7 +61,7 @@ impl JobEnvelope {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Job {
-    CutVideo(CutVideo),
+    EditVideo(EditVideo),
     ConvertDocument(ConvertDocument),
     MergePdfs(MergePdfs),
 }
@@ -69,7 +69,7 @@ pub enum Job {
 impl Job {
     pub fn type_name(&self) -> &'static str {
         match self {
-            Job::CutVideo(_) => "cut-video",
+            Job::EditVideo(_) => "edit-video",
             Job::ConvertDocument(_) => "convert-document",
             Job::MergePdfs(_) => "merge-pdfs",
         }
@@ -84,11 +84,15 @@ impl Job {
                 .unwrap_or(path)
         }
         match self {
-            Job::CutVideo(j) => format!(
-                "{} [{:.1}s-{:.1}s] → {}",
+            Job::EditVideo(j) => format!(
+                "{} [{:.1}s-{:.1}s]{} → {}",
                 basename(&j.input),
                 j.start_secs,
                 j.end_secs,
+                j.crop
+                    .as_ref()
+                    .map(|c| format!(" crop {}x{}+{}+{}", c.width, c.height, c.x, c.y))
+                    .unwrap_or_default(),
                 j.output
             ),
             Job::ConvertDocument(j) => format!(
@@ -107,11 +111,23 @@ impl Job {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct CutVideo {
+pub struct EditVideo {
     pub input: String,
     pub output: String,
     pub start_secs: f64,
     pub end_secs: f64,
+    pub crop: Option<CropRect>,
+}
+
+/// Native source-video pixel units — computed client-side from the video
+/// element's own `videoWidth`/`videoHeight`, so the worker never needs
+/// ffprobe just to know the source's dimensions.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CropRect {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

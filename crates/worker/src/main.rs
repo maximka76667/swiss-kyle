@@ -1,6 +1,6 @@
 mod consumer;
 mod convert_document;
-mod cut_video;
+mod edit_video;
 mod error;
 mod job;
 mod merge_pdfs;

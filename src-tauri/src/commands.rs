@@ -1,8 +1,8 @@
 use crate::job_log::JobLog;
 use crate::{PdfcpuBin, VideoServer};
 use shared::{
-    base_output_dir, ConvertDocument, Converter, CutVideo, DocFormat, Job, JobEnvelope, LogEntry,
-    MergePdfs, Publisher,
+    base_output_dir, ConvertDocument, Converter, CropRect, DocFormat, EditVideo, Job, JobEnvelope,
+    LogEntry, MergePdfs, Publisher,
 };
 
 /// Recent diagnostic job-log entries, newest first. Read-only view onto the
@@ -77,18 +77,20 @@ pub(crate) async fn submit_doc_convert_job(
 }
 
 #[tauri::command]
-pub(crate) async fn submit_cut_job(
+pub(crate) async fn submit_edit_video_job(
     publisher: tauri::State<'_, Publisher>,
     input: String,
     output: String,
     start_secs: f64,
     end_secs: f64,
+    crop: Option<CropRect>,
 ) -> Result<String, String> {
-    let job = JobEnvelope::new(Job::CutVideo(CutVideo {
+    let job = JobEnvelope::new(Job::EditVideo(EditVideo {
         input,
         output,
         start_secs,
         end_secs,
+        crop,
     }));
     publisher.publish(&job).await.map_err(|e| e.to_string())?;
     Ok(job.id)

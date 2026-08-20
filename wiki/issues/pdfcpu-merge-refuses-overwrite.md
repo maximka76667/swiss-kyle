@@ -3,7 +3,7 @@
 **Type**: issue
 **Summary**: Resolved. `pdfcpu merge` refuses to overwrite an existing output file by default, so re-running a merge with an unchanged output title failed the job instead of replacing the file; fixed by passing `--force`, matching `cut_video.rs`'s existing overwrite-by-default behavior via ffmpeg's `-y`.
 **Tags**: #issue #resolved #worker #pdfcpu #merge-pdfs
-**Sources**: [[crates/worker/src/merge_pdfs.rs]], [[crates/worker/src/cut_video.rs]], [[e2e/specs/merge-pdfs.spec.ts]]
+**Sources**: [[crates/worker/src/merge_pdfs.rs]], [[crates/worker/src/edit_video.rs]], [[e2e/specs/merge-pdfs.spec.ts]]
 **Related**: [[wiki/components/worker]], [[wiki/components/tauri-app]], [[wiki/components/e2e-tests]]
 **Last Updated**: 2026-08-07
 

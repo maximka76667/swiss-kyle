@@ -1,4 +1,4 @@
-import { FolderOpen, Scissors, ArrowLeftRight, Combine, X } from "lucide-react";
+import { FolderOpen, X } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { Badge } from "@shadcn/components/ui/badge";
 import { Button } from "@shadcn/components/ui/button";
@@ -13,13 +13,12 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@shadcn/components/ui/sidebar";
+import { TOOLS } from "@/lib/tools";
 import type { Tool, TrackedJob, TrackedJobStatus } from "@/types/jobs";
 
-const TOOL_ICONS: Record<Tool, React.ElementType> = {
-  "cut-video": Scissors,
-  "doc-converter": ArrowLeftRight,
-  "merge-pdfs": Combine,
-};
+const TOOL_ICONS: Record<Tool, React.ElementType> = Object.fromEntries(
+  TOOLS.map((t) => [t.id, t.icon]),
+) as Record<Tool, React.ElementType>;
 
 function statusBadgeVariant(
   status: TrackedJobStatus,

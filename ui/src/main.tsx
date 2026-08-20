@@ -8,7 +8,7 @@ import App from "./App.tsx";
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <MemoryRouter initialEntries={["/cut-video"]}>
+      <MemoryRouter initialEntries={["/edit-video"]}>
         <App />
       </MemoryRouter>
     </ThemeProvider>

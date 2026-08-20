@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useAppVersion } from "@/hooks/use-app-version";
 import { TooltipProvider } from "@shadcn/components/ui/tooltip";
 import {
   SidebarProvider,
@@ -8,18 +10,24 @@ import {
   Sidebar,
 } from "@shadcn/components/ui/sidebar";
 import { ToolNav } from "@/components/tool-nav";
-import { JobHistory } from "@/components/job-history";
-import { CutVideo } from "@/components/cut-video";
-import { DocConverter } from "@/components/doc-converter";
-import { MergePdfs } from "@/components/merge-pdfs";
-import { DiagnosticsPage } from "@/components/diagnostics-page";
+import { ErrorBoundary } from "@/components/error-boundary";
+import { JobHistory } from "@/features/job-history/components/job-history";
+import { DiagnosticsPage } from "@/features/diagnostics-page/components/diagnostics-page";
+import { TOOLS } from "@/lib/tools";
 import { FloatingSidebarTrigger } from "@/components/floating-sidebar-trigger";
 import { Toaster } from "@shadcn/components/ui/sonner";
 import type { JobStatus, JobStatusEvent, Tool, TrackedJob } from "@/types/jobs";
 
 function App() {
+  const location = useLocation();
+  const version = useAppVersion();
   const [jobs, setJobs] = useState<TrackedJob[]>([]);
   const pendingEvents = useRef<Map<string, JobStatus>>(new Map());
+
+  useEffect(() => {
+    if (!version) return;
+    getCurrentWindow().setTitle(`Swiss Kyle v${version}`);
+  }, [version]);
 
   useEffect(() => {
     const unlisten = listen<JobStatusEvent>("job-status", (event) => {
@@ -79,21 +87,20 @@ function App() {
             style={{ "--sidebar-width": "480px" } as React.CSSProperties}
           >
             <SidebarInset>
-              <Routes>
-                <Route
-                  path="/cut-video"
-                  element={<CutVideo onJobSubmitted={handleJobSubmitted} />}
-                />
-                <Route
-                  path="/doc-converter"
-                  element={<DocConverter onJobSubmitted={handleJobSubmitted} />}
-                />
-                <Route
-                  path="/merge-pdfs"
-                  element={<MergePdfs onJobSubmitted={handleJobSubmitted} />}
-                />
-                <Route path="/diagnostics" element={<DiagnosticsPage />} />
-              </Routes>
+              <ErrorBoundary key={location.pathname}>
+                <Routes>
+                  {TOOLS.map(({ path, component: Component }) => (
+                    <Route
+                      key={path}
+                      path={path}
+                      element={
+                        <Component onJobSubmitted={handleJobSubmitted} />
+                      }
+                    />
+                  ))}
+                  <Route path="/diagnostics" element={<DiagnosticsPage />} />
+                </Routes>
+              </ErrorBoundary>
             </SidebarInset>
             <Sidebar side="right" collapsible="offcanvas">
               <JobHistory jobs={jobs} onRemove={handleRemoveJob} />

@@ -3,7 +3,7 @@
 **Type**: issue
 **Summary**: Open — an audit (not yet actioned) applying Ousterhout's *A Philosophy of Software Design* deep/shallow-module and information-hiding lens across the codebase, identifying concrete refactor candidates for the user to work through file by file.
 **Tags**: #issue #tech-debt #refactoring #philosophy-of-software-design #deep-modules #information-hiding #open
-**Sources**: [[src-tauri/src/video_server.rs]], [[src-tauri/src/job_log.rs]], [[src-tauri/src/commands.rs]], [[src-tauri/src/lib.rs]], [[crates/worker/src/cut_video.rs]], [[crates/worker/src/merge_pdfs.rs]], [[crates/worker/src/convert_document.rs]], [[crates/shared/src/lib.rs]], [[ui/src/hooks/use-file-drop.ts]], [[ui/src/components/cut-video.tsx]], [[ui/src/components/doc-converter.tsx]], [[ui/src/components/merge-pdfs.tsx]], [[ui/src/components/job-history.tsx]], [[ui/src/components/video-player.tsx]]
+**Sources**: [[src-tauri/src/video_server.rs]], [[src-tauri/src/job_log.rs]], [[src-tauri/src/commands.rs]], [[src-tauri/src/lib.rs]], [[crates/worker/src/edit_video.rs]], [[crates/worker/src/merge_pdfs.rs]], [[crates/worker/src/convert_document.rs]], [[crates/shared/src/lib.rs]], [[ui/src/hooks/use-file-drop.ts]], [[ui/src/components/edit-video.tsx]], [[ui/src/components/doc-converter.tsx]], [[ui/src/components/merge-pdfs.tsx]], [[ui/src/components/job-history.tsx]], [[ui/src/components/video-player.tsx]]
 **Related**: [[wiki/components/video-server]], [[wiki/components/frontend]], [[wiki/components/worker]], [[wiki/components/job-types]]
 **Last Updated**: 2026-08-07
 
