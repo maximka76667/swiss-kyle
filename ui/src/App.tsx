@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useAppVersion } from "@/hooks/use-app-version";
 import { TooltipProvider } from "@shadcn/components/ui/tooltip";
 import {
   SidebarProvider,
@@ -18,8 +20,14 @@ import type { JobStatus, JobStatusEvent, Tool, TrackedJob } from "@/types/jobs";
 
 function App() {
   const location = useLocation();
+  const version = useAppVersion();
   const [jobs, setJobs] = useState<TrackedJob[]>([]);
   const pendingEvents = useRef<Map<string, JobStatus>>(new Map());
+
+  useEffect(() => {
+    if (!version) return;
+    getCurrentWindow().setTitle(`Swiss Kyle v${version}`);
+  }, [version]);
 
   useEffect(() => {
     const unlisten = listen<JobStatusEvent>("job-status", (event) => {
@@ -85,7 +93,9 @@ function App() {
                     <Route
                       key={path}
                       path={path}
-                      element={<Component onJobSubmitted={handleJobSubmitted} />}
+                      element={
+                        <Component onJobSubmitted={handleJobSubmitted} />
+                      }
                     />
                   ))}
                   <Route path="/diagnostics" element={<DiagnosticsPage />} />

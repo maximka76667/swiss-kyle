@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { ScrollArea } from "@shadcn/components/ui/scroll-area";
 import type { LogEntry, WorkerHeartbeat } from "@/types/jobs";
 import { cn } from "@shadcn/lib/utils";
+import { useAppVersion } from "@/hooks/use-app-version";
 
 // 3x the worker's 5s heartbeat publish interval (crates/worker/src/main.rs
 // WORKER_HEARTBEAT_INTERVAL) — a worker that misses this many ticks in a row
@@ -115,6 +116,7 @@ function WorkerListRow({ worker, now }: { worker: WorkerRow; now: number }) {
 }
 
 export function DiagnosticsPage() {
+  const version = useAppVersion();
   const [workers, setWorkers] =
     useState<Map<number, WorkerRow>>(initialWorkerRows);
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -167,6 +169,15 @@ export function DiagnosticsPage() {
 
   return (
     <div className="flex h-full flex-col gap-6 p-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-semibold">Diagnostics</h1>
+        {version && (
+          <span className="text-xs text-muted-foreground">
+            Swiss Kyle v{version}
+          </span>
+        )}
+      </div>
+
       <div>
         <h2 className="mb-3 text-base font-semibold">Workers</h2>
         <div className="divide-y divide-border rounded-md border">
